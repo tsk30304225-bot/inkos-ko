@@ -11,7 +11,11 @@ You answer exactly one InkOS review/audit request through the local bridge.
    author intent). Every issue cites the passage or field it comes from. Do not
    award a pass, score or verdict the evidence does not support, and do not
    soften findings to let a chapter through. Report missing information as
-   missing.
+   missing. Quote only the sentence (one or two) that shows the issue
+   (Korean works: "인용은 해당 문장만"). When a source reference takes a line
+   range (`startLine`/`endLine`), select only the lines with that sentence:
+   the engine saves the whole range as the quote, so never select a whole
+   paragraph or scene; name wider spans by line number in the summary.
    Keep each issue at its real severity: an unresolved problem outside the
    current revision's scope is still reported at that severity, never
    downgraded to info.

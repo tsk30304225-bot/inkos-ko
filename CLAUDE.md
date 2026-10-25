@@ -17,3 +17,9 @@ do not start the next stage until the supervisor's `[승인]`. Update that log
 - Claims of "done" need evidence: test output, saved files, bridge request list.
 - Ask the user before deciding anything listed as 미정 in PLAN.md.
 - Keep AGPL-3.0-only and the upstream copyright notices.
+- Author choices are interactive by default: ask with `tools/novel-brief.py`
+  (numbered questions), `pack --resume` before waiting, pass answers with
+  `write next --context-file`; "N화 써줘" is batch mode (no questions). Rules:
+  `korean-port/RUNTIME.md` "작가 선택".
+- 실제 작품은 회차 완료 시 연결 도구로 Drive 'Inkos ko'에 올린다. 시험 작품(`test-`)은 올리지 않는다.
+  Test works (IDs `test-…`) are never sent to the user, uploaded or committed.

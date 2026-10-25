@@ -15,7 +15,7 @@ settings - never from the command line or chat:
   novel-drive.py unpack <archive> <dest>
   novel-drive.py split <archive> [out_dir] [--part-size 12000]   # parts + <archive>.parts.json
   novel-drive.py join  <archive>.parts.json [-o out.tar.gz]      # checks every sha256
-  novel-drive.py push  <project> [--keep 10]
+  novel-drive.py push  <project> [--keep 10]      # OAuth push/pull/list/init-folder: 선택, 앱이 쓰지 않음
   novel-drive.py pull  <dest> [--name ARCHIVE_NAME] [--force]
   novel-drive.py list
   novel-drive.py init-folder [--name inkos-novels]   # create the archive folder, print its id

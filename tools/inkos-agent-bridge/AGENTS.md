@@ -150,21 +150,44 @@ change, pass the correction to the next chapter with `write next <book>
 `--brief`, quote the sentence to fix instead of giving a line number (engine
 line numbers skip the 2 heading lines).
 
+Author choices (interactive by default): do not decide what the author decides.
+Ask with `python3 tools/novel-brief.py` (numbered questions the user can answer
+by number), and run `pack --resume` (storage policy below) before waiting for
+an answer. Before `book create`: `novel-brief.py interview <brief.md>`; after
+the design: `interview --work works/<ID>`; before each chapter: `next
+works/<ID>`, then `direct works/<ID> --choice K -o FILE` and `write next <ID>
+--context-file FILE` (the same text is appended to
+`source/story/author_directions.md`). Items already answered in the brief or
+that file are not asked again. Briefings come only from the work's files;
+missing fields read "없음". "N화 써줘" is batch mode: no questions, per chapter
+`direct --plan -o FILE` then `write next --count 1 --context-file FILE`; stop
+at a state-not-applied warning or a failed job, report a table (length, review
+observations, state applied) at the end, and mark any temporary author choice
+as "가정". Full rules: `korean-port/RUNTIME.md` "작가 선택".
+
 In the Korean fork, novel projects live only in the container. Follow this policy
 (also in `korean-port/RUNTIME.md`):
 
 ## 원고 보관 지침 (모든 실행 환경)
+
+실제 작품은 회차 완료 시 연결 도구로 Drive 'Inkos ko'에 올린다. 시험 작품(`test-`)은 올리지 않는다.
+
+### 실제 작품 (사용자가 실제로 쓰는 작품)
 - 작품 폴더와 원고는 공개 포크에 커밋하지 않는다.
 - 회차 하나를 끝낼 때마다, 그리고 세션 끝에 재개용 압축본을 만든다:
   python3 tools/novel-drive.py pack <작품 폴더> <작품ID>_<YYYYMMDD-HHMM>_<마지막 회차>화.tar.gz --resume
-- 보관 경로는 이 순서로 쓰고, 쓴 경로와 파일 이름(원본 크기·sha256 포함)을 사용자에게 보고한다.
-  1. 사용자에게 파일로 건넨다(Claude Code는 파일 보내기 도구, 다른 환경은 그 환경의 파일 첨부·다운로드 기능).
-  2. 이 환경의 Google Drive 연결로 "Inkos ko" 폴더에 조각으로 올린다. 압축본이 작을 때만 쓴다(아래 "조각 업로드").
-     10화 이상이면 조각 수가 늘어나므로 1 또는 3을 쓴다.
-  3. OAuth `novel-drive.py push` — 사용자가 인증 정보를 환경 비밀값에 등록한 경우만(선택). exit 3이면 `--force` 없이 멈추고 보고한다.
-- 어느 경로도 안 되면 실패 사실과 이유를 보고에 적는다.
+- 기본: 이 환경의 Google Drive 연결 도구로 에이전트가 직접 "Inkos ko" 폴더에 올린다. 연결 도구가 한 번에 받는 양(약 12KB)보다 크면
+  아래 "조각 업로드"대로 나눠 올린다. Drive 업로드는 각 에이전트의 연결 도구가 하는 일이며, 포크 코드에 Drive 기능을 더 넣지 않는다.
+- 보조: 사용자에게 파일로 건넨다 — 사용자가 원할 때, 또는 Drive 업로드가 실패했을 때.
+- 쓴 경로와 파일 이름(원본 크기·sha256 포함)을 사용자에게 보고한다. 어느 경로도 안 되면 실패 사실과 이유를 보고에 적는다.
 - 세션 시작: 받은 압축본을 unpack하기 전에 파일 이름, 마지막 회차, sha256을 사용자에게 보여주고 확인받는다.
 - 한 작품을 두 환경에서 동시에 작업하지 않는다.
+
+### 시험 작품 (`test-`)
+1. 개발·실행 시험에서 검증용으로 만든 작품이다. 새로 만드는 시험 작품의 ID는 `test-`로 시작한다(예: `test-6-murim`; ID는 제목에서 만들어지므로 제목을 `test-…`로 시작).
+2. 시험 작품은 밖으로 내보내지 않는다: 사용자에게 파일로 보내지 않고, Drive에 올리지 않고, 커밋하지 않는다. `pack --resume`은 같은 VM 안에서 재개를 검증할 때만 쓴다.
+3. 예외: 사용자가 요청한 경우, 또는 감독이 보관 경로 자체를 시험하라고 지시한 경우에만 내보낸다.
+4. 증거는 짧게: 보고와 VERIFICATION에는 원고를 몇 줄 이하로 인용하고 분량·크기·sha256으로 남긴다.
 
 ### 파일로 건네고 다음 세션에서 받기
 - 건네기(Claude Code): 압축본을 파일 보내기 도구(`SendUserFile`, 첨부 형식)로 보낸다. 사용자는 Claude 앱 대화에서 파일 카드를 눌러 휴대폰에 저장한다.
@@ -180,5 +203,5 @@ In the Korean fork, novel projects live only in the container. Follow this polic
   스크립트가 없을 때: `cat <압축본>.part1ofN … <압축본>.partNofN > <압축본>` 후 `sha256sum <압축본>`을 목록의 `sha256`과 비교한다.
 
 "Inkos ko" folder ID: `1FYkA9t5AiI3u31cL0uM8dSFjgf5LxnEU`. The OAuth `novel-drive.py push`/`pull`
-sync is optional. If `push` exits 3 (overwrite protection), do not use `--force`;
+sync is optional and not used by the app (선택, 앱이 쓰지 않음). If `push` exits 3 (overwrite protection), do not use `--force`;
 stop and report to the user.

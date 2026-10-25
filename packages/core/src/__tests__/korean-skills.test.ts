@@ -184,4 +184,9 @@ describe("Korean skill layer", () => {
     const review = (await loadLinkedSkillResources(korean.skills.find((skill) => skill.id === "inkos-story-review")!))[0]!.body;
     expect(review).toContain("상태 검증의 판정 기준");
   });
+
+  it("asks Korean reviews to quote only the sentence that shows the issue", async () => {
+    const korean = await loadBuiltinAgentSkills(koreanSkillsRoot());
+    expect(korean.skills.find((skill) => skill.id === "inkos-story-review")!.body).toContain("인용은 해당 문장만");
+  });
 });
