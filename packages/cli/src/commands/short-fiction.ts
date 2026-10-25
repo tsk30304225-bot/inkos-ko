@@ -53,7 +53,7 @@ shortCommand
   .requiredOption("--direction <text>", "Story direction, e.g. \"女频短篇 婚姻背叛 证据反杀\" or \"female-lead short: marriage betrayal, evidence payback\"")
   .option("--reference <path>", "Optional reference notes/text")
   .option("--story-id <id>", "Work id for the generated short fiction")
-  .option("--lang <language>", "Writing language: ko (한국어), zh or en", parseWritingLanguage, "ko")
+  .option("--lang <language>", "Writing language: zh, en or ko (한국어)", parseWritingLanguage, "zh")
   .option("--chapters <n>", "Complete short chapter count", String(SHORT_FICTION_DEFAULT_CHAPTERS))
   .option("--chars <n>", "Per-chapter length: zh characters or en words")
   .option("--min-chapter-length-ratio <ratio>", "Minimum complete chapter length relative to target (0 < ratio <= 1)", "0.5")

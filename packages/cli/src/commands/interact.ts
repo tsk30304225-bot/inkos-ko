@@ -93,7 +93,7 @@ export function createInteractCommand(hooks: InteractCommandHooks = {}): Command
         ...(work ? { profileId: work.profileId, workId: work.id } : {}),
         actionSource,
         requestedIntent,
-        language: config.language ?? "ko",
+        language: config.language ?? "zh",
         pipeline,
         projectRoot,
         model: client._piModel

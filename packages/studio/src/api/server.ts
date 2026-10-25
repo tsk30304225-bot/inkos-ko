@@ -3088,7 +3088,7 @@ export function createStudioServer(initialConfig: ProjectConfig, root: string, o
         state.loadBookConfig(id),
         buildPipelineConfig({ bookIdForSettings: id }),
       ]);
-      const language = normalizeStudioLanguage(book.language ?? (await loadCurrentProjectConfig({ requireApiKey: false })).language);
+      const language = normalizeStudioLanguage(book.language);
       const requestedBrief = typeof body.brief === "string" ? body.brief.trim() : "";
       const inspirationSkills = await hydrateActivatedSkillGuidance(
         await resolveStudioProfileSkills(root, "longform-novel", { includeRecommended: true }),

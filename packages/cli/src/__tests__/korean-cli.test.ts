@@ -26,11 +26,17 @@ describe("Korean CLI language contract", () => {
     expect(() => parseWritingLanguage("fr")).toThrow();
     expect(() => parseWritingLanguage("korean")).toThrow();
   });
-  it("persists Korean as the default for a new project", async () => {
+  it("keeps the upstream Chinese default and persists an explicit Korean project", async () => {
     const { initializeProjectDirectory } = await import("../project-bootstrap.js");
     await initializeProjectDirectory(directory);
-    const config = JSON.parse(await readFile(join(directory, "inkos.json"), "utf8"));
-    expect(config.language).toBe("ko");
+    expect(JSON.parse(await readFile(join(directory, "inkos.json"), "utf8")).language).toBe("zh");
+    const koreanDirectory = join(directory, "korean");
+    await initializeProjectDirectory(koreanDirectory, { language: "ko" });
+    expect(JSON.parse(await readFile(join(koreanDirectory, "inkos.json"), "utf8")).language).toBe("ko");
+  });
+  it("falls back to Chinese when the locale is not ko, en or zh", () => {
+    expect(resolveCliLanguage(undefined, { LANG: "C.UTF-8" })).toBe("zh");
+    expect(resolveCliLanguage(undefined, { INKOS_LOCALE: "ko" })).toBe("ko");
   });
   it("keeps explicit English project language", async () => {
     const { initializeProjectDirectory } = await import("../project-bootstrap.js");

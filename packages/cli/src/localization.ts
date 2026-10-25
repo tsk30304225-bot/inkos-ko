@@ -53,7 +53,7 @@ export function resolveCliLanguage(
   }
 
   const detected = normalizeCliLanguageTag(env.LC_ALL ?? env.LC_MESSAGES ?? env.LANG);
-  return detected ?? "ko";
+  return detected ?? "zh";
 }
 
 export function formatBookCreateCreating(

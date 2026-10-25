@@ -123,7 +123,7 @@ export async function initializeProjectDirectory(
   projectDir: string,
   options: ProjectBootstrapOptions = {},
 ): Promise<void> {
-  const language = options.language ?? "ko";
+  const language = options.language ?? "zh";
   const overwriteSupportFiles = options.overwriteSupportFiles ?? true;
   const configPath = join(projectDir, "inkos.json");
 

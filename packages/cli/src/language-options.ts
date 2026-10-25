@@ -6,6 +6,6 @@ export type WritingLanguage = "ko" | "zh" | "en";
 export function parseWritingLanguage(value: string): WritingLanguage {
   const normalized = value.trim().toLowerCase().replace(/_/g, "-");
   const match = normalized.match(/^(ko|zh|en)(?:-[a-z0-9]+)*$/);
-  if (!match) throw new InvalidArgumentError("집필 언어는 ko(한국어), zh(중국어), en(영어) 중에서 선택하세요.");
+  if (!match) throw new InvalidArgumentError("Writing language must be zh, en or ko (집필 언어는 ko·zh·en 중 하나).");
   return match[1] as WritingLanguage;
 }

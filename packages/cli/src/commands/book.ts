@@ -34,8 +34,8 @@ bookCommand
   .command("create")
   .description("Create a new book with AI-generated foundation")
   .requiredOption("--title <title>", "Book title")
-  .option("--genre <genre>", "Genre (defaults from writing language)")
-  .option("--platform <platform>", "Target platform (Korean defaults to other)")
+  .option("--genre <genre>", "Genre (default: xuanhuan; Korean books: other)")
+  .option("--platform <platform>", "Target platform (default: tomato; Korean books: other)")
   .option("--target-chapters <n>", "Target chapter count", "200")
   .option("--chapter-words <n>", "Words per chapter", "3000")
   .option("--brief <path>", "Path to creative brief file (.md/.txt) — Architect builds from your ideas instead of generating from scratch")
@@ -61,12 +61,13 @@ bookCommand
       }
 
       const config = await loadConfig();
+      const koreanBook = (opts.lang ?? config.language) === "ko";
       const now = new Date().toISOString();
       const book: BookConfig = {
         id: bookId,
         title: opts.title,
-        platform: PlatformSchema.parse(opts.platform ?? "other"),
-        genre: opts.genre ?? ((opts.lang ?? config.language) === "ko" ? "other" : "xuanhuan"),
+        platform: PlatformSchema.parse(opts.platform ?? (koreanBook ? "other" : "tomato")),
+        genre: opts.genre ?? (koreanBook ? "other" : "xuanhuan"),
         status: "outlining",
         targetChapters: parseInt(opts.targetChapters, 10),
         chapterWordCount: parseInt(opts.chapterWords, 10),

@@ -30,10 +30,14 @@ export const exportCommand = new Command("export")
         }, null, 2));
       } else {
         const book = await state.loadBookConfig(bookId);
-        const language = book.language ?? "ko";
-        const length = formatLengthCount(result.totalWords, resolveLengthCountingMode(language));
-        log(language === "ko" ? `${result.chaptersExported}개 회차를 내보냈습니다(${length}).` : `Exported ${result.chaptersExported} chapters (${length})`);
-        log(language === "ko" ? `저장 위치: ${result.outputPath}` : `Output: ${result.outputPath}`);
+        if (book.language === "ko") {
+          const length = formatLengthCount(result.totalWords, resolveLengthCountingMode("ko"));
+          log(`${result.chaptersExported}개 회차를 내보냈습니다(${length}).`);
+          log(`저장 위치: ${result.outputPath}`);
+        } else {
+          log(`Exported ${result.chaptersExported} chapters (${result.totalWords} words)`);
+          log(`Output: ${result.outputPath}`);
+        }
       }
     } catch (e) {
       if (opts.json) {
