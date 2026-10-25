@@ -12,6 +12,7 @@ import type { Static, TSchema } from "@sinclair/typebox";
 import type { Logger } from "../utils/logger.js";
 import { SourcedReviewIndexToolSchema, ArtifactReviewIndexToolSchema } from "./review-tool.js";
 import { resolveObservationSources } from "../models/observation.js";
+import { attachKoreanGenreReference } from "../skills/korean-genre-references.js";
 import {
   hydrateActivatedSkillGuidance,
   type ActivatedSkillGuidance,
@@ -138,7 +139,8 @@ export async function prepareWorkerMessages(
     }
     // Navigation and other read-only semantic mechanics need the source and
     // author request, without a writing method encouraging broader changes.
-    const activations = professionalGuidance ? await hydrateActivatedSkillGuidance(selectedSkills, query) : [];
+    const hydrated = professionalGuidance ? await hydrateActivatedSkillGuidance(selectedSkills, query) : [];
+    const activations = hydrated ? await attachKoreanGenreReference(hydrated, { work, projectRoot: context.projectRoot, bookId: context.bookId }) : hydrated;
     recordExecutionEvidence("skills-applied", { worker: workerId, skills: activations?.map(({ skill, resources }) => ({
       id: skill.id, source: skill.source, hash: createHash("sha256").update(skill.body).digest("hex"),
       references: resources.map(resource => ({ path: resource.path, charStart: resource.charStart, charEnd: resource.charEnd,

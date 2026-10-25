@@ -52,7 +52,9 @@ export class ArchitectAgent extends BaseAgent {
     const resolvedLanguage = book.language;
 
     const contextBlock = externalContext
-      ? `\n\n## 外部指令\n以下是来自外部系统的创作指令，请将其融入设定中：\n\n${externalContext}\n`
+      ? (resolvedLanguage === "ko"
+          ? `\n\n## 외부 지시\n다음은 외부 시스템에서 전달된 창작 지시다. 설정에 반영하라:\n\n${externalContext}\n`
+          : `\n\n## 外部指令\n以下是来自外部系统的创作指令，请将其融入设定中：\n\n${externalContext}\n`)
       : "";
     const reviewFeedbackBlock = this.buildReviewFeedbackBlock(reviewFeedback, resolvedLanguage);
     const revisePrompt = options?.reviseFrom

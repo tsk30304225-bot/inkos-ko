@@ -1,4 +1,4 @@
-import { KOREAN_SETTING_POLICY, KOREAN_LIGHT_MARTIAL_POLICY } from "./korean-setting-policy.js";
+import { KOREAN_SETTING_POLICY } from "./korean-setting-policy.js";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { LLMMessage } from "../llm/provider.js";
@@ -31,15 +31,7 @@ export async function resolveConfiguredWritingLanguage(projectRoot?: string, boo
 
 export async function applyProjectLanguagePolicy(messages: ReadonlyArray<LLMMessage>, projectRoot?: string, bookId?: string): Promise<ReadonlyArray<LLMMessage>> {
   if (await resolveConfiguredWritingLanguage(projectRoot, bookId) !== "ko") return messages;
-  let genre: string | undefined;
-  if (projectRoot && bookId && /^[\p{L}\p{N}][\p{L}\p{N}._-]*$/u.test(bookId) && !bookId.includes("..")) {
-    for (const filename of [join(projectRoot,"books",bookId,"book.json"), join(projectRoot,"works",bookId,"source","book.json"), join(projectRoot,"works",bookId,"work.json")]) {
-      try { const value = JSON.parse(await readFile(filename,"utf8")) as {genre?: string};
-        if (value.genre) { genre=value.genre; break; }
-      } catch (error) { if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error; }
-    }
-  }
-  const martial = genre && /^(?:korean-martial|무협|한국무협|한국-무협|wuxia|martial-arts)$/iu.test(genre);
-  return [...messages, { role: "system", content: [KOREAN_WRITING_POLICY, KOREAN_SETTING_POLICY,
-    ...(martial ? [KOREAN_LIGHT_MARTIAL_POLICY] : [])].join("\n\n") }];
+  // Genre guidance (e.g. light martial) is attached as a Korean skill reference by
+  // skills/korean-genre-references.ts, so it is not duplicated here.
+  return [...messages, { role: "system", content: [KOREAN_WRITING_POLICY, KOREAN_SETTING_POLICY].join("\n\n") }];
 }

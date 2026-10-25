@@ -11,7 +11,7 @@ import { LengthCountingModeSchema } from "../models/length-governance.js";
 import { applyProjectLanguagePolicy, resolveConfiguredWritingLanguage } from "../utils/korean-language-policy.js";
 
 describe("Korean writing support", () => {
-  it("applies setting contracts and scopes light martial guidance to the selected genre", async () => {
+  it("applies setting contracts without duplicating genre guidance", async () => {
     const root = await mkdtemp(join(tmpdir(), "inkos-ko-setting-"));
     try {
       await writeFile(join(root,"inkos.json"), JSON.stringify({language:"ko"}));
@@ -22,10 +22,9 @@ describe("Korean writing support", () => {
       for (const axis of ["목적", "맥락", "기준", "경계"]) expect(general).toContain(axis);
       expect(general).toContain("정수나 enum에 설명문을 넣거나");
       expect(general).not.toContain("## 현대 한국 라이트 무협 편집 기준");
+      // Light martial guidance now arrives as a Korean skill reference (korean-skills.test.ts).
       const martial = (await applyProjectLanguagePolicy(messages,root,"무협")).at(-1)!.content;
-      expect(martial).toContain("## 현대 한국 라이트 무협 편집 기준");
-      expect(martial).toContain("화경/현경/생사경을 보편 필수 사다리로 고정하지 않는다");
-      expect(martial).toContain("회귀·빙의·환생·천재성·기연·시스템은 선택 장치");
+      expect(martial).toBe(general);
     } finally {await rm(root,{recursive:true,force:true});}
   });
   it("creates actionable Korean control documents and preserves an author's existing text", async () => {

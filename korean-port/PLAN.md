@@ -213,3 +213,15 @@ names, scene order, or signature combinations" 원칙을 그대로 지킨다). �
     **실제 writer 메시지(`prepareWorkerMessages`)에 ko 프로젝트만 `# 한국어 장편 집필 방법`과 `# 한국어 문장 기준`이 들어가고 en 프로젝트는 원본이 들어감**.
     전체(프록시 변수 제거): core 725 / studio 307 / cli 94 통과.
   - 다음: 2-1단계(장르 references). 장르 값은 `light-martial`, `fantasy`, `modern-fantasy`(SURVEY 3절 제안).
+- 2026-10-25 (`claude/eeum-n0rsol`): **2-1단계 완료.**
+  - 장르 값 확정: `light-martial`, `fantasy`, `modern-fantasy`(한국어 이름·별칭도 인식: 무협·라이트무협·korean-martial, 판타지, 현대판타지·현판 등). 그 밖의 값은 장르 문서 없이 진행.
+  - 문서: `packages/core/skills-ko/inkos-long-writing/references/genres/{light-martial,fantasy,modern-fantasy}.md` — 계획서의 공통 틀(독자 약속→주인공→세계/세력→힘의 규칙과 대가→회차 리듬→흔한 실패→검수 질문).
+    특정 작품의 이름·설정은 넣지 않음. 라이트 무협은 `korean-port/reference/현대한국-라이트무협-기준.md` 바탕.
+  - 연결: `packages/core/src/skills/korean-genre-references.ts` — 한국어 `inkos-long-writing`이 활성화되고 작품이 ko일 때, 작품 매니페스트 `metadata.genre`(없으면 book.json)로
+    장르 문서를 결정론적으로 붙이고 다른 장르 문서는 검색 결과에서 걸러낸다. `agents/base.ts` `prepareWorkerMessages`에 2줄. 장르 문서는 링크하지 않음(항상 로드 방지).
+    검수 질문은 같은 활성화로 auditor에도 들어간다(review-matrix "장르별 질문" 절이 이를 가리킴).
+  - 패치의 `KOREAN_LIGHT_MARTIAL_POLICY` 별도 주입은 장르 문서와 중복이라 제거(패치 테스트를 그에 맞게 수정).
+  - 같은 실행에서 고친 것: architect 외부 지시 제목이 ko에 `## 外部指令` → `## 외부 지시`(ko 분기만, en은 원본 그대로).
+  - 검증: 브리지 실제 실행으로 장르마다 `book create` architect 요청 프롬프트에 **해당 장르 문서 하나만** 들어감을 확인 → `korean-port/VERIFICATION.md`.
+    단위 테스트(`korean-skills.test.ts`)에 장르 매핑·장르별 단일 첨부·zh/en 미첨부 추가. 전체(프록시 변수 제거): core 728 / studio 307 / cli 94 통과.
+  - 다음: 2-2단계(드라마 대본, 설명형 영상 대본). **시작 전 사용자 확인 필요**: 드라마 대본 기본 형식(미니시리즈/세로형 숏드라마), AI 비디오 스튜디오의 입력 스키마(또는 예시 JSON), 설명 영상 목표 길이(롱폼/쇼츠).

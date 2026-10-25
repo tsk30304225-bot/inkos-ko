@@ -34,7 +34,7 @@ bookCommand
   .command("create")
   .description("Create a new book with AI-generated foundation")
   .requiredOption("--title <title>", "Book title")
-  .option("--genre <genre>", "Genre (default: xuanhuan; Korean books: other)")
+  .option("--genre <genre>", "Genre (default: xuanhuan; Korean books: other — Korean genre guides: light-martial, fantasy, modern-fantasy)")
   .option("--platform <platform>", "Target platform (default: tomato; Korean books: other)")
   .option("--target-chapters <n>", "Target chapter count", "200")
   .option("--chapter-words <n>", "Words per chapter", "3000")

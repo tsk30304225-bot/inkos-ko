@@ -24,7 +24,8 @@ export const initCommand = new Command("init")
         log("");
         log("다음 단계:");
         if (name) log(`  cd ${name}`);
-        log("  inkos book create --title '새로운 이야기' --genre other --platform other --lang ko");
+        log("  inkos book create --title '새로운 이야기' --genre light-martial --lang ko");
+        log("  # 장르 기준이 있는 값: light-martial(라이트 무협), fantasy(판타지), modern-fantasy(현대판타지). 그 밖의 값은 장르 기준 없이 진행합니다.");
         log("  inkos write next <book-id>");
         return;
       }

@@ -8,6 +8,7 @@ import { koreanSkillsRoot } from "../skills/korean-skill-root.js";
 import { loadLinkedSkillResources } from "../agent/skill-tool.js";
 import { prepareWorkerMessages } from "../agents/base.js";
 import { createWorkManifest, saveWorkManifest } from "../harness/work-store.js";
+import { KOREAN_GENRE_IDS, resolveKoreanGenre } from "../skills/korean-genre-references.js";
 
 const KOREAN_SKILL_IDS = ["inkos-long-writing", "inkos-story-review", "inkos-story-deslop", "inkos-short-writing"];
 
@@ -98,6 +99,50 @@ describe("Korean skill layer", () => {
         expect(prompt.includes("# Long-form narrative craft"), language).toBe(!korean);
       } finally { await rm(root, { recursive: true, force: true }); }
     }
+  });
+
+  it("maps genre values and Korean names to genre references", () => {
+    expect(resolveKoreanGenre("light-martial")).toBe("light-martial");
+    expect(resolveKoreanGenre("무협")).toBe("light-martial");
+    expect(resolveKoreanGenre("korean-martial")).toBe("light-martial");
+    expect(resolveKoreanGenre("현대판타지")).toBe("modern-fantasy");
+    expect(resolveKoreanGenre("Modern Fantasy")).toBe("modern-fantasy");
+    expect(resolveKoreanGenre("판타지")).toBe("fantasy");
+    expect(resolveKoreanGenre("xuanhuan")).toBeUndefined();
+    expect(resolveKoreanGenre("other")).toBeUndefined();
+  });
+
+  it("attaches exactly the selected genre reference to Korean long-form workers", async () => {
+    const titles: Record<string, string> = {
+      "light-martial": "# 장르 기준: 한국 라이트 무협",
+      "fantasy": "# 장르 기준: 판타지 (fantasy)",
+      "modern-fantasy": "# 장르 기준: 현대판타지",
+    };
+    const prompts: Record<string, string> = {};
+    for (const genre of [...KOREAN_GENRE_IDS, "other"]) {
+      const root = await projectWith("ko");
+      try {
+        await saveWorkManifest(root, createWorkManifest({ id: "work", title: "work", profileId: "longform-novel", language: "ko", metadata: { genre } }));
+        const client = { defaults: { maxTokens: 4096 } } as unknown as Parameters<typeof prepareWorkerMessages>[0]["client"];
+        // The query mentions every genre so that lexical retrieval would pull all genre files if they were not filtered.
+        const messages = await prepareWorkerMessages({ client, projectRoot: root, bookId: "work" }, [{ role: "user", content: "무협 판타지 현대판타지 마법 내공 게이트 등급 회차를 써라" }], 4096, "architect");
+        prompts[genre] = messages.map((message) => message.content).join("\n");
+      } finally { await rm(root, { recursive: true, force: true }); }
+    }
+    for (const genre of KOREAN_GENRE_IDS) {
+      for (const [other, title] of Object.entries(titles)) expect(prompts[genre]!.includes(title), `${genre} has ${other}`).toBe(other === genre);
+    }
+    for (const title of Object.values(titles)) expect(prompts.other!.includes(title)).toBe(false);
+  });
+
+  it("does not attach Korean genre references to zh/en works", async () => {
+    const root = await projectWith("en");
+    try {
+      await saveWorkManifest(root, createWorkManifest({ id: "work", title: "work", profileId: "longform-novel", language: "en", metadata: { genre: "fantasy" } }));
+      const client = { defaults: { maxTokens: 4096 } } as unknown as Parameters<typeof prepareWorkerMessages>[0]["client"];
+      const messages = await prepareWorkerMessages({ client, projectRoot: root, bookId: "work" }, [{ role: "user", content: "write" }], 4096, "architect");
+      expect(messages.map((message) => message.content).join("\n")).not.toContain("장르 기준");
+    } finally { await rm(root, { recursive: true, force: true }); }
   });
 
   it("keeps protocol values from the upstream contract", async () => {
