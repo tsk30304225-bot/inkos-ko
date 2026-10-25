@@ -141,6 +141,15 @@ limits; keep confirmed canon, plans and undecided author choices separate. For
 light martial fiction see `현대한국-라이트무협-기준.md`; do not force
 reincarnation, a fixed cultivation ladder, or a Korean historical setting.
 
+Revision in Korean projects: the latest chapter owns the runtime state, so
+revising an earlier chapter saves only its file and index (ko prints a warning
+that the state files may keep the old facts). Earlier chapters get only
+`spot-fix` edits that change no facts (wording, register). When facts must
+change, pass the correction to the next chapter with `write next <book>
+--context "..."` and tell the author; never rewind or hand-edit state. In a
+`--brief`, quote the sentence to fix instead of giving a line number (engine
+line numbers skip the 2 heading lines).
+
 In the Korean fork, novel projects live only in the container. Follow this policy
 (also in `korean-port/RUNTIME.md`):
 

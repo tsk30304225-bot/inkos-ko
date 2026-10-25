@@ -419,3 +419,111 @@ modern-fantasy: j-20261025-172402-842ccd53 book create exit=0 / j-20261025-17292
 | `Revising "<id>" chapter N [mode: spot-fix]...`, `Stage: loading revision context / revising chapter N / persisting revision / updating chapter index and snapshots`, `Chapter N revised`, `Words: N`, `Review observations: N` | `revise` 출력(결과 줄까지 영어) |
 
 코드에만 있는 것(출력 미확인): 알림 제목 `${book.title} 第${chapterNumber}章`(`pipeline/runner.ts`, 알림 채널 설정 시), `chapter-review.ts`의 검토 불가 요약(SURVEY 부록 B).
+
+## 2026-10-25 — 4단계 (화면 한국어 + 5-b 보완)
+
+### 1. ko 회차 감사에 한국어 review 스킬
+
+원인: 대화형 경로(`agent-session.ts`)는 auditor·reviser에 프로필의 권장 스킬(`recommendedSkillIds` = `inkos-story-review`)을 붙이지만,
+CLI `write next`의 회차 파이프라인은 작업자 스킬을 넘기지 않아 `prepareWorkerMessages`가 필수 스킬(`inkos-long-writing`)만 붙였다.
+CLI `revise`는 원래부터 모든 언어에서 권장 스킬을 붙인다(`resolveCliProfileSkills(..., { includeRecommended: true })`) — en 복사본의 수정 뒤 감사에도 239행에 있었다.
+수정: `skills/korean-review-skills.ts` — ko 작품의 `continuity-auditor`·`reviser`에만 권장 스킬을 더한다(`agents/base.ts` 3줄). zh/en, 다른 작업자(writer·state-validator)는 그대로.
+시험: `korean-skills.test.ts` "adds the Korean review skill to ko chapter audits and revisions only"(ko/en/zh × 작업자 4종). 수정을 빼면 `ko continuity-auditor: expected false to be true`로 실패.
+
+브리지 확인(`novel-5a2-resumed`, `write next` 4화, job `j-20261025-180100-7526f584`): 감사 요청 `r-20261025-180939-74c05bf4` 프롬프트
+```
+161:### inkos-long-writing — inkos-long-writing
+383:## 상태 검증의 판정 기준
+461:### inkos-story-review — inkos-story-review
+463:# 한국어 원고 검수
+466:- 해결되지 않은 문제의 등급을 낮추지 않는다. 이번 수정 범위 밖이라는 이유로 실제 문제를 `info`로 내리지 말고, …
+481:#### Reference: references/review-matrix.md:0-1773
+483:# 검수 기준표
+532:## 상태 검증
+```
+같은 job의 상태 검증 요청은 `inkos-long-writing`(판정 기준 294행)만 — 검증 작업자에는 붙이지 않는다(의도).
+4화 "줄인 칼" 3,004자, 감사 의견 7건(보통 1: 1화 수정 뒤 남은 상태 문구, 경미 4, 관찰 2), 상태 검증 1차 `true`(본문에 없는 "아침"·화자 추론) → 재정산 → `false` → 저장.
+`lastAppliedChapter 4`, 스냅샷 1~4. 4화 정산에서 `편재옥 | 원칙` 행과 H02 notes가 1화 현재 본문에 맞게 다시 쓰였다(5-b의 낡은 상태 문구가 다음 회차에서 바로잡힘).
+
+### 2. 앞 회차 수정 경고와 지침
+
+- ko CLI `revise`: 바뀐 회차가 최신 회차보다 앞이면 경고 3줄(`korean-cli-text.ts` `formatKoreanEarlierRevisionNotice`). `--json` 출력은 그대로.
+- 지침: `RUNTIME.md` "원고 수정(`revise`) 지침", 브리지 `AGENTS.md` "Revision in Korean projects" — 앞 회차는 사실을 바꾸지 않는 spot-fix만,
+  사실이 바뀌면 다음 회차 `write next --context`로 넘기고 작가에게 알림, 상태 되감기·손 편집 금지, `--brief`에는 줄 번호 대신 인용문.
+
+브리지 확인(작품 복사본 `scratchpad/rev-ko` — 시험 작품의 남은 원고 문제는 그대로 두기로 했으므로 원본은 건드리지 않음, job `j-20261025-181747-98ce7860`):
+```
+$ inkos revise 철쭉골-대장간-막내 2 --mode spot-fix --brief "하오체 이탈 한 곳만 고친다: \"반은 먼저 드리지요.\"의 '드리지요'를 …"
+"철쭉골-대장간-막내" 2화 수정 중 [모드: spot-fix]...
+INFO  [inkos] 단계: 2화 수정 맥락 불러오기
+INFO  [inkos] 단계: 2화 수정
+INFO  [writer] 2단계: 2화 사실을 상태에 반영
+INFO  [writer] 2단계: 2화 사실을 상태에 반영
+INFO  [inkos] 단계: 2화 수정 결과 저장
+INFO  [inkos] 단계: 2화 색인과 스냅샷 갱신
+  2화 수정 완료
+  분량: 2880자
+  검수 의견: 3건
+  경고: 2화는 최신 회차(4화)가 아니어서 원고와 회차 색인만 저장했습니다.
+        상태 파일(현재 상태·복선·회차 요약·스냅샷)에는 수정 전 사실이 남을 수 있습니다.
+        사실이 바뀌는 수정이었다면 다음 회차를 쓸 때 `write next --context`로 바로잡을 내용을 넘기세요.
+```
+원고 diff는 파일 13행(엔진 11행) 한 줄 `드리지요` → `드리겠소`. `story/` 전체가 원본과 같고 `lastAppliedChapter 4` 그대로(경고 내용과 일치).
+수정 요청(384행)·수정 뒤 감사(459행)·상태 검증 프롬프트 모두 `inkos-story-review` 포함(CLI `revise`의 원래 동작).
+
+### 3. CLI 문구 한국어화 (ko 작품에서만)
+
+- 파이프라인 진행·경고 로그: `utils/korean-log-messages.ts` — 호출부의 zh 문구를 열쇠로 ko 문구를 찾는다(호출부 30곳은 그대로, `runner.ts` `logStage`·`logInfo`·`logWarn`과 `writer.ts` `localize`만 수정).
+  시험 `korean-log-messages.test.ts`가 네 파일의 모든 `logStage`/`logInfo`/`logWarn` 호출을 읽어 빠진 문구가 없는지 확인한다.
+- `(N words)` → `N자`, `Stage:` → `단계:`, writer `Phase 1/2` → `1단계/2단계`, 상태 검증 경고 3종.
+- `revise` 출력 전체(`Revising…`, `Chapter N revised`, `Words:`, `Review observations:`, `Revise failed:`) → `korean-cli-text.ts`.
+- 응답 대기 `streaming Ns, N chars (N CJK)` → `응답 받는 중 N초, N자`(한글은 CJK 수에 들어가지 않아 그 숫자는 뺐다). 프로젝트 `inkos.json`의 language로 고른다.
+- 알림 제목 `${title} 第N章` → ko는 `${title} N화`(`runner.ts`, 알림 채널이 있을 때만; 알림 채널이 없어 실제 출력은 확인하지 못함).
+- `write next`의 의견 목록 머리말: ko `검수 의견:`이 바로 위 `검수 의견: N건`과 겹쳐 `의견 목록:`으로 바꿈.
+
+전후(ko, 같은 작품):
+```
+변경 전(5-b, 3화·revise)                           변경 후(4단계, 4화·revise)
+INFO  [inkos] Stage: preparing chapter inputs       INFO  [inkos] 단계: 회차 입력 준비
+INFO  [inkos] streaming 30s, 0 chars (0 CJK)       INFO  [inkos] 응답 받는 중 30초, 0자
+INFO  [writer] Phase 1: creative writing for chapter 3   INFO  [writer] 1단계: 4화 본문 쓰기
+INFO  [writer] Phase 2: state settlement for chapter 3 (2940 words)   INFO  [writer] 2단계: 4화 상태 정산 (3004자)
+INFO  [writer] Phase 2: projecting chapter 3 facts into runtime state INFO  [writer] 2단계: 4화 사실을 상태에 반영
+INFO  [inkos] Stage: collecting chapter review observations   INFO  [inkos] 단계: 회차 검수 의견 모으기
+INFO  [inkos] Stage: persisting final chapter      INFO  [inkos] 단계: 최종 회차 저장
+INFO  [inkos] Stage: rebuilding final truth files  INFO  [inkos] 단계: 최종 상태 파일 다시 만들기
+INFO  [inkos] Stage: validating truth file updates INFO  [inkos] 단계: 상태 파일 변경 검증
+WARN  [inkos] State validation: 1 observation(s) for chapter 3   WARN  [inkos] 상태 검증: 4화 의견 1건
+(5-a) State projection needs reconciliation; …     WARN  [inkos] 상태 반영을 다시 맞춰야 해서 4화 정산만 다시 계산합니다
+(5-a) State validation retry still reports …       WARN  [inkos] 상태 검증을 다시 해도 4화 의견 1건이 남았습니다
+Revising "철쭉골-대장간-막내" chapter 1 [mode: spot-fix]...   "철쭉골-대장간-막내" 2화 수정 중 [모드: spot-fix]...
+INFO  [inkos] Stage: loading revision context for chapter 1   INFO  [inkos] 단계: 2화 수정 맥락 불러오기
+  Chapter 1 revised / Words: 2898 / Review observations: 8   2화 수정 완료 / 분량: 2880자 / 검수 의견: 3건
+```
+4화 job 로그 전체에서 영어 진행 문구 0줄, 한자 줄 0.
+
+en(변경 후, 작품 복사본의 `inkos.json`·`work.json`·`book.json` language를 en으로 바꾼 `scratchpad/rev-en`, job `j-20261025-182618-474d9fdc`):
+```
+Revising "잿빛-탑의-견습-필사공" chapter 1 [mode: spot-fix]...
+INFO  [inkos] Stage: loading revision context for chapter 1
+INFO  [inkos] Stage: revising chapter 1
+INFO  [writer] Phase 2: projecting chapter 1 facts into runtime state
+INFO  [inkos] streaming 30s, 0 chars (0 CJK)
+INFO  [inkos] Stage: persisting revision for chapter 1
+INFO  [inkos] Stage: updating chapter index and snapshots for chapter 1
+  Chapter 1 revised
+  Words: 0
+  Review observations: 7
+```
+변경 전 영어 문구(5-b의 ko 작품이 냈던 줄)와 같다. `Words: 0`은 en 단어 수로 한국어 본문을 세서 생긴 시험용 복사본의 값이다. zh 출력은 단위 시험으로만 확인(`korean-log-messages.test.ts` "leaves zh and en output unchanged", 원본 시험 전체 통과).
+
+### 4. 압축본 크기 조사
+
+`RUNTIME.md` "회차마다 커지는 양": 2화 49,008 → 3화 84,636 → 4화 118,446바이트. 증가의 큰 몫은 감사 관찰의 긴 인용문(`chapters/index.json`)과 최신 스냅샷 교체이고,
+gzip 32KB 창 때문에 중복이 줄지 않는다(xz면 3화 43,200). 줄이는 방법 4가지를 측정만 하고 적용하지 않았다.
+
+### 5. 브리지 요청
+
+4화 7건(기획·초고·정산 2·감사·검증 2) + ko revise 7건(범위·교체·정산 2·검증 2·감사) + en revise 5건(범위·교체·정산·검증·감사) = 19건, 모두 delivered.
+writer와 reviewer는 서로 다른 서브에이전트(수정 범위·교체 4건은 조정 세션이 직접 답함). 임시 복사본 `rev-ko`·`rev-en`은 시험 뒤 지웠다.
+4화 뒤 `--resume` 압축본: `철쭉골-대장간-막내_20261025-1817_4화.tar.gz` 118,446바이트, sha256 `1f946149d0680c7839b27f153f514edb03382632ff378bfe7e18dd6d95650cfd`(사용자에게 파일로 건넴).
