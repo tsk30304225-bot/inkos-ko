@@ -158,7 +158,9 @@ export function unresolvedStateObservation(
 ): Observation {
   return {
     code: "state-validation",
-    summary: language !== "zh"
+    summary: language === "ko"
+      ? "상태 재계산 후에도 해결되지 않은 불일치가 남아 있습니다."
+      : language !== "zh"
       ? "State reconciliation remains unresolved after recalculation."
       : "状态结算重算后仍有未解决差异。",
     evidence: [],

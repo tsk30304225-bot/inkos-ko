@@ -11,7 +11,8 @@ import type { ChapterIntent, ChapterMemo, ContextPackage } from "../models/input
 import type { LengthSpec } from "../models/length-governance.js";
 import type { ChapterMeta } from "../models/chapter.js";
 import { RuntimeStateDeltaSchema, type RuntimeStateDelta } from "../models/runtime-state.js";
-import { buildLengthSpec, countChapterLength } from "../utils/length-metrics.js";
+import { buildLengthSpec, countChapterLength, resolveLengthCountingMode } from "../utils/length-metrics.js";
+import { koreanLengthPhrase } from "../utils/korean-language.js";
 import {
   buildRuntimeStateArtifacts,
   buildRuntimeStateArtifactsFromSnapshot,
@@ -255,7 +256,7 @@ export class WriterAgent extends BaseAgent {
       content: input.content,
       wordCount: countChapterLength(
         input.content,
-        resolvedLanguage !== "zh" ? "en_words" : "zh_chars",
+        resolveLengthCountingMode(resolvedLanguage),
       ),
       postSettlement: settlement.postSettlement,
       runtimeStateDelta: runtimeStateArtifacts?.resolvedDelta ?? settlement.runtimeStateDelta,
@@ -317,8 +318,8 @@ export class WriterAgent extends BaseAgent {
       ],
       {
         name: "submit_runtime_state_delta",
-        label: resolvedLang === "en" ? "Submit runtime state delta" : "提交运行时状态变更",
-        description: resolvedLang === "en"
+        label: resolvedLang !== "zh" ? "Submit runtime state delta" : "提交运行时状态变更",
+        description: resolvedLang !== "zh"
           ? "Submit only chapter-grounded incremental state changes. The host owns the chapter number."
           : "只提交正文有证据的增量状态变更；章节号由宿主持有。",
         parameters: createSettlementToolSchema(params.allowNewHooks),
@@ -553,6 +554,12 @@ ${selectedContext || "- none"}\n`;
       ...(lengthSpec.minChapterLength!==undefined?[`Minimum: ${lengthSpec.minChapterLength}`]:[]),
       ...(lengthSpec.maxChapterLength!==undefined?[`Maximum: ${lengthSpec.maxChapterLength}`]:[]),
     ];
+    if (language === "ko") {
+      return `Requirements:
+- User target length: ${koreanLengthPhrase(lengthSpec.target)}
+- ${bounds.join("; ") || "No additional hard range specified."} (ko_chars: NFC characters excluding whitespace, punctuation included, title excluded)
+- Keep the scene complete; do not pad or cut mechanically`;
+    }
     if (language !== "zh") {
       return `Requirements:
 - User target length: ${lengthSpec.target} words

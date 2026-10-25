@@ -39,7 +39,9 @@ export class StateValidatorAgent extends BaseAgent {
       return { observations: [], consistent: true, reconciliationRequired: false };
     }
 
-    const langInstruction = language !== "zh"
+    const langInstruction = language === "ko"
+      ? "Write the report in Korean."
+      : language !== "zh"
       ? "Respond in English."
       : "用中文回答。";
 

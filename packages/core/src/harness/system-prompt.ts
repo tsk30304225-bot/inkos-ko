@@ -99,7 +99,10 @@ ${resumeLine ? `- ${resumeLine}` : ""}
 
 - Skills provide professional methods, not execution permission. Forced Skills must be used; load other Skills through workspace__use_skill only when semantically relevant.
 - Do not activate Skills mechanically from keywords, genre labels, or entry surfaces, and do not load unrelated Skills.`;
-  return appendSkillGuidance(base, options.skills, options.allowIntentSkillSelection === true, isZh);
+  const languageDirective = options.language === "ko"
+    ? "\n\n## Response language\n\nThe project writing language is Korean (ko). Reply to the user in Korean and write human-readable Work content in Korean. Keep tool names, JSON keys, enum values and file paths unchanged."
+    : "";
+  return appendSkillGuidance(base + languageDirective, options.skills, options.allowIntentSkillSelection === true, isZh);
 }
 
 function appendSkillGuidance(

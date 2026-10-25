@@ -310,6 +310,8 @@ export {
   SHORT_FICTION_DEFAULT_CHAPTERS,
   SHORT_FICTION_DEFAULT_CHARS_PER_CHAPTER,
   SHORT_FICTION_EN_DEFAULT_WORDS_PER_CHAPTER,
+  SHORT_FICTION_KO_DEFAULT_CHARS_PER_CHAPTER,
+  shortFictionDefaultChapterLength,
   ShortFictionOutlineAgent,
   ShortFictionWriterAgent,
   ShortFictionDraftReviewerAgent,
@@ -431,7 +433,8 @@ export { StateValidatorAgent } from "./agents/state-validator.js";
 export { createInitialRuntimeState, loadRuntimeStateSnapshot, buildRuntimeStateArtifacts, saveRuntimeStateSnapshot, type RuntimeStateArtifacts } from "./state/runtime-state-store.js";
 export { splitChapters, type SplitChapter } from "./utils/chapter-splitter.js";
 export * from "./translation/index.js";
-export { countChapterLength, resolveLengthCountingMode, formatLengthCount, buildLengthSpec, defaultChapterLength, DEFAULT_CHAPTER_LENGTH_ZH, DEFAULT_CHAPTER_LENGTH_EN, type LengthLanguage } from "./utils/length-metrics.js";
+export { countChapterLength, resolveLengthCountingMode, formatLengthCount, buildLengthSpec, defaultChapterLength, DEFAULT_CHAPTER_LENGTH_ZH, DEFAULT_CHAPTER_LENGTH_EN, DEFAULT_CHAPTER_LENGTH_KO, type LengthLanguage } from "./utils/length-metrics.js";
+export { chapterLabel, normalizeWritingLanguage, pickByLanguage, promptLanguage, type WritingLanguage } from "./utils/korean-language.js";
 export { createLogger, createStderrSink, createJsonLineSink, nullSink, type Logger, type LogSink, type LogLevel, type LogEntry } from "./utils/logger.js";
 export { loadProjectConfig, GLOBAL_CONFIG_DIR, GLOBAL_ENV_PATH, isApiKeyOptionalForEndpoint } from "./utils/config-loader.js";
 export { resolveEffectiveLLMConfig, LLMConfigurationError, type EffectiveLLMConfigResult, type EffectiveLLMDiagnostics, type LLMConfigCliOverrides, type LLMConfigMode, type LLMConsumer, type LLMValueSource } from "./utils/effective-llm-config.js";

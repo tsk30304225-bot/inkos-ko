@@ -2,6 +2,7 @@ import type { BookConfig } from "../models/book.js";
 import type { BookRules } from "../models/book-rules.js";
 import type { LengthSpec } from "../models/length-governance.js";
 import { buildLengthSpec } from "../utils/length-metrics.js";
+import { koreanLengthPhrase } from "../utils/korean-language.js";
 
 /** Writer protocol. Narrative craft comes from the active long-writing Skill. */
 export function buildWriterSystemPrompt(
@@ -45,6 +46,7 @@ The current user instruction and chapter memo govern this chapter. Established f
 }
 
 function lengthContract(spec: LengthSpec, language: "zh" | "en" | "ko"): string {
+  if (language === "ko") return `## Length\nUser target: ${koreanLengthPhrase(spec.target)} (ko_chars). Preserve scene completeness instead of padding or cutting mechanically.`;
   return language !== "zh"
     ? `## Length\nUser target: ${spec.target} words. Preserve scene completeness instead of padding or cutting mechanically.`
     : `## 字数\n用户目标：${spec.target} 字。保持场景完整，不要机械注水或裁切。`;

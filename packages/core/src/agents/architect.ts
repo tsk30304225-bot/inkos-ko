@@ -8,6 +8,7 @@ import { FoundationDetailsToolSchema, FoundationOutlineToolSchema, FoundationCas
 import type { HookRecord } from "../models/runtime-state.js";
 import { createInitialRuntimeState } from "../state/runtime-state-store.js";
 import { commitAtomicFileSet, type AtomicFileWrite } from "../utils/atomic-file-set.js";
+import { promptLanguage } from "../utils/korean-language.js";
 
 // Architect owns the five-section persistence protocol. Foundation craft is
 // supplied by the active long-writing and derivative-work Skills.
@@ -65,7 +66,7 @@ export class ArchitectAgent extends BaseAgent {
     const langPrefix = resolvedLanguage === "ko" ? "설정의 내용·인물명·지명·설명은 한국어로 작성한다. 기술용 키·태그·파서용 제목은 원래 계약을 유지한다.\n\n" : resolvedLanguage !== "zh"
       ? "【LANGUAGE OVERRIDE】All submitted foundation content, character names, place names, and prose must be in English.\n\n"
       : "";
-    const userMessage = resolvedLanguage === "ko" ? `제목이 "${book.title}"인 작품의 전체 기초 설정을 한국어로 작성하라. 각 설정 항목의 목적·맥락·기준·경계를 분명히 하고 지정 출력 계약을 지켜라.` : resolvedLanguage !== "zh"
+    const userMessage = resolvedLanguage === "ko" ? `장르가 "${book.genre}"이고 제목이 "${book.title}"인 작품의 전체 기초 설정을 한국어로 작성하라. 각 설정 항목의 목적·맥락·기준·경계를 분명히 하고 지정 출력 계약을 지켜라.` : resolvedLanguage !== "zh"
       ? `Generate the complete foundation for the ${book.genre} Work titled "${book.title}". Write everything in English.`
       : `请为标题为"${book.title}"的${book.genre}作品生成完整基础设定。`;
 
@@ -317,14 +318,14 @@ ${reviseFrom.userFeedback || "（无）"}
 
     const castContext=`${input.userMessage}\n\n${outline.storyFrame}\n\n${outline.volumeMap}\n\n${details.bookRules}`;
     const {result:cast} = await this.submitStructured([
-      {role:"system",content:input.language==="en"
+      {role:"system",content:promptLanguage(input.language)==="en"
         ? "List the named people who shape the opening conflict. Submit only their names and major/minor roles. Do not expand unnamed occupational groups into invented biographies."
         : "列出影响开篇冲突的具名人物，只提交姓名和主要/次要角色级别，不把无名岗位群体扩写成虚构人物。"},
       {role:"user",content:castContext},
     ],{name:"submit_foundation_cast_index",label:"Identify opening cast",description:"Submit the names and tiers of the opening cast.",parameters:FoundationCastIndexToolSchema},
     {temperature:input.temperature,maxTokens:Math.min(2048,this.ctx.client.defaults.maxTokens)});
     const {result:cards} = await this.submitStructured([
-      {role:"system",content:input.language==="en"
+      {role:"system",content:promptLanguage(input.language)==="en"
         ? "Create concise character cards for the named people who shape the opening conflict. Ground each card in the supplied story. Give present motive, knowledge, relationship pressure and limits in about 80–120 words; avoid repeating the plot or expanding unnamed occupational groups into full biographies."
         : "为影响开篇冲突的具名人物写简明角色卡。每人约150—250字，写清当下动机、已知信息、关系压力与能力边界，依据已给定故事，不重复整篇情节，不把无名岗位群体扩写成完整传记。"},
       {role:"user",content:castContext},

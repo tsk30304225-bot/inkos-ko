@@ -1326,7 +1326,7 @@ async function runAgentSessionUnlocked(
         ? { sourceToolAssistantUuid: lastAssistantUuid }
         : {}),
       ...(role === "user" && config.attachments?.length ? { display: { userInput: {
-        text: userMessage, language: language !== "zh" ? "en" as const : "zh" as const,
+        text: userMessage, language: language === "ko" ? "ko" as const : language !== "zh" ? "en" as const : "zh" as const,
         attachments: config.attachments.map(attachment => ({ filename: attachment.filename })),
       } } } : {}),
       message: persistedMessage,

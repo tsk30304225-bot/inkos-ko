@@ -61,7 +61,7 @@ export class ReviserAgent extends BaseAgent {
     const context = renderNarrativeSelectedContext(options.contextPackage.selectedContext, options.language);
     const lengthBlock = options.lengthSpec
       ? (isEnglish
-          ? `\n## Length contract\n${JSON.stringify({...options.lengthSpec,currentCount:countChapterLength(chapterContent,options.lengthSpec.countingMode),unit:"words"})}`
+          ? `\n## Length contract\n${JSON.stringify({...options.lengthSpec,currentCount:countChapterLength(chapterContent,options.lengthSpec.countingMode),unit:options.language === "ko" ? "ko_chars: NFC characters excluding whitespace, punctuation included, title excluded" : "words"})}`
           : `\n## 篇幅要求\n${JSON.stringify({...options.lengthSpec,currentCount:countChapterLength(chapterContent,options.lengthSpec.countingMode),unit:"正文非空白字符，含标点，不含标题"})}`)
       : "";
     const systemPrompt = buildRevisionProtocol(mode, options.language);

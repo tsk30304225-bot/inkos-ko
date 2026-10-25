@@ -15,7 +15,9 @@ export function renderCompleteImportSource(
   chapters: ReadonlyArray<ImportedChapterSource>,
   language: "zh" | "en" | "ko",
 ): string {
-  return chapters.map((chapter, index) => language !== "zh"
+  return chapters.map((chapter, index) => language === "ko"
+    ? `제${index + 1}화 ${chapter.title}\n\n${chapter.content}`
+    : language !== "zh"
     ? `Chapter ${index + 1}: ${chapter.title}\n\n${chapter.content}`
     : `第${index + 1}章 ${chapter.title}\n\n${chapter.content}`)
     .join("\n\n---\n\n");
@@ -62,7 +64,9 @@ export async function compileImportSource(input: {
     if (!body) throw new Error(`Import context compiler returned empty output for chunk ${index + 1}/${chunks.length}.`);
     compiled.push(`## ${input.language !== "zh" ? "Compiled source chunk" : "编译源片段"} ${index + 1}/${chunks.length}\n\n${body}`);
   }
-  const catalog = input.chapters.map((chapter, index) => input.language !== "zh"
+  const catalog = input.chapters.map((chapter, index) => input.language === "ko"
+    ? `- 제${index + 1}화: ${chapter.title}`
+    : input.language !== "zh"
     ? `- Chapter ${index + 1}: ${chapter.title}`
     : `- 第${index + 1}章：${chapter.title}`).join("\n");
   return {

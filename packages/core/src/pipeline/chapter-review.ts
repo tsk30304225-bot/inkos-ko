@@ -62,17 +62,20 @@ export async function reviewChapterDraft(params: {
       },
     );
   } catch (error) {
+    const isKorean = params.lengthSpec.countingMode === "ko_chars";
     const isEnglish = params.lengthSpec.countingMode === "en_words";
     modelReview = {
       unavailable: true,
       observations: [{
         code: "review-unavailable",
-        summary: isEnglish
+        summary: isKorean
+          ? `검수 의견을 받지 못했습니다: ${String(error)}`
+          : isEnglish
           ? `Review observation was unavailable: ${String(error)}`
           : `审稿观察暂不可用：${String(error)}`,
         evidence: [],
       }],
-      summary: isEnglish ? "Review unavailable" : "审稿暂不可用",
+      summary: isKorean ? "검수 불가" : isEnglish ? "Review unavailable" : "审稿暂不可用",
     };
   }
   return {

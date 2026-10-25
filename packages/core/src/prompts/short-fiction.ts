@@ -42,10 +42,12 @@ export function buildShortFictionOutlineUserPrompt(input: ShortFictionOutlinePro
   return [
     language !== "zh" ? "## Creative Direction" : "## 创作方向",
     input.direction,
-    ...(input.title?[language==="en"?`Confirmed title: ${input.title}. Preserve it exactly.`:`已确定书名：${input.title}。书名保持原样。`]:[]),
+    ...(input.title?[language!=="zh"?`Confirmed title: ${input.title}. Preserve it exactly.`:`已确定书名：${input.title}。书名保持原样。`]:[]),
     "",
     language !== "zh" ? "## Target" : "## 目标",
-    language !== "zh"
+    language === "ko"
+      ? `${input.chapterCount} chapters; about ${input.charsPerChapter} ko_chars (Korean characters excluding whitespace) per chapter.`
+      : language !== "zh"
       ? `${input.chapterCount} chapters; about ${input.charsPerChapter} words per chapter.`
       : `${input.chapterCount} 章；每章约 ${input.charsPerChapter} 字。`,
     ...(reference ? ["", language !== "zh" ? "## Reference" : "## 参考材料", reference] : []),
@@ -62,13 +64,15 @@ export function buildShortFictionWriterUserPrompt(input: ShortFictionDraftPrompt
   const previous = input.previousDraftMarkdown?.trim();
   return [
     language !== "zh" ? "## Task" : "## 任务",
-    language !== "zh"
+    language === "ko"
+      ? `Write only chapters ${chapters.join(", ")} of ${input.chapterCount}; about ${input.charsPerChapter} ko_chars (excluding whitespace) each.`
+      : language !== "zh"
       ? `Write only chapters ${chapters.join(", ")} of ${input.chapterCount}; about ${input.charsPerChapter} words each.`
       : `只写第 ${chapters.join("、")} 章；全篇 ${input.chapterCount} 章，每章约 ${input.charsPerChapter} 字。`,
-    ...(input.title?[language==="en"?`Confirmed title: ${input.title}. Preserve it exactly.`:`已确定书名：${input.title}。书名保持原样。`]:[]),
-    ...(input.openingHookChars&&chapters.includes(1)?[language==="en"?`Also submit an independent opening scene of about ${input.openingHookChars} words before chapter one. Keep the complete first chapter separate.`:`另交约 ${input.openingHookChars} 字的正文前独立开篇场面，放在 openingHook 字段；第一章仍须完整，不能用开篇钩子代替。`]:[]),
-    ...(input.maxChapterLength !== undefined ? [language !== "zh" ? `Maximum per chapter: ${input.maxChapterLength} words.` : `每章正文最多 ${input.maxChapterLength} 个非空白字符（含标点）。`] : []),
-    ...(input.minChapterLength !== undefined ? [language !== "zh" ? `Minimum per chapter: ${input.minChapterLength} words.` : `每章正文至少 ${input.minChapterLength} 个非空白字符（含标点）。`] : []),
+    ...(input.title?[language!=="zh"?`Confirmed title: ${input.title}. Preserve it exactly.`:`已确定书名：${input.title}。书名保持原样。`]:[]),
+    ...(input.openingHookChars&&chapters.includes(1)?[language!=="zh"?`Also submit an independent opening scene of about ${input.openingHookChars} ${language === "ko" ? "ko_chars" : "words"} before chapter one. Keep the complete first chapter separate.`:`另交约 ${input.openingHookChars} 字的正文前独立开篇场面，放在 openingHook 字段；第一章仍须完整，不能用开篇钩子代替。`]:[]),
+    ...(input.maxChapterLength !== undefined ? [language === "ko" ? `Maximum per chapter: ${input.maxChapterLength} ko_chars (excluding whitespace, punctuation included).` : language !== "zh" ? `Maximum per chapter: ${input.maxChapterLength} words.` : `每章正文最多 ${input.maxChapterLength} 个非空白字符（含标点）。`] : []),
+    ...(input.minChapterLength !== undefined ? [language === "ko" ? `Minimum per chapter: ${input.minChapterLength} ko_chars (excluding whitespace, punctuation included).` : language !== "zh" ? `Minimum per chapter: ${input.minChapterLength} words.` : `每章正文至少 ${input.minChapterLength} 个非空白字符（含标点）。`] : []),
     "",
     language !== "zh" ? "## Direction" : "## 创作方向",
     input.direction,
@@ -90,9 +94,9 @@ export function buildShortFictionDraftReviewUserPrompt(input: ShortFictionDraftR
     "", language !== "zh" ? "## Source: outline (plan, not manuscript)" : "## Source: outline（大纲）", input.outlineMarkdown,
     "", language !== "zh" ? "## Review scope" : "## 审查范围", input.reviewScope ?? "whole-story",
     ...(input.revisionRequest ? ["", language !== "zh" ? "## Latest revision request" : "## 最近修改请求", input.revisionRequest] : []),
-    ...(input.measurements ? ["", language==="en"?"## Host-verified manuscript measurements":"## 宿主核验的成稿计量",
+    ...(input.measurements ? ["", language!=="zh"?"## Host-verified manuscript measurements":"## 宿主核验的成稿计量",
       JSON.stringify({contentScope:"complete_manuscript",chapterLengthScope:"prose_excluding_chapter_headings",...input.measurements}),
-      language==="en"?"Use these measured lengths. Numbered source lines below contain the complete supplied manuscript; line numbering does not mean an excerpt.":"篇幅判断采用以上实测值。以下编号来源包含所提供的完整正文；编号用于引用，不表示节选。"] : []),
+      language!=="zh"?"Use these measured lengths. Numbered source lines below contain the complete supplied manuscript; line numbering does not mean an excerpt.":"篇幅判断采用以上实测值。以下编号来源包含所提供的完整正文；编号用于引用，不表示节选。"] : []),
     "", language !== "zh" ? "## Draft under review" : "## 待审正文", input.draftMarkdown,
   ].join("\n");
 }
@@ -109,7 +113,7 @@ export function buildShortFictionPackageUserPrompt(input: ShortFictionPackagePro
     "", language !== "zh" ? "## Plan" : "## 故事方案", input.outlineMarkdown.trim(),
     "", language !== "zh" ? "## Persisted draft" : "## 已落盘正文", input.draftMarkdown.trim(),
     "", language !== "zh" ? "## Existing title" : "## 当前标题", input.draftTitle,
-    ...(input.reviewContext?["",language==='en'?"## Review evidence":"## 审稿依据",input.reviewContext]:[]),
+    ...(input.reviewContext?["",language!=="zh"?"## Review evidence":"## 审稿依据",input.reviewContext]:[]),
   ].join("\n");
 }
 function requestedShortFictionChapters(input: ShortFictionDraftPromptInput): number[] {

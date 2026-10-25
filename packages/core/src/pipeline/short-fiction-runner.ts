@@ -11,8 +11,7 @@ import { basename, dirname, join, isAbsolute, relative } from "node:path";
 import type { AgentContext } from "../agents/base.js";
 import {
   SHORT_FICTION_DEFAULT_CHAPTERS,
-  SHORT_FICTION_DEFAULT_CHARS_PER_CHAPTER,
-  SHORT_FICTION_EN_DEFAULT_WORDS_PER_CHAPTER,
+  shortFictionDefaultChapterLength,
   ShortFictionDraftReviewerAgent,
   ShortFictionOutlineAgent,
   ShortFictionPackagingAgent,
@@ -64,7 +63,7 @@ function shortDraftMinimum(options: ShortFictionRunOptions) {
   const identity={title:options.title,openingHookChars:options.openingHookChars};
   if (ratio === undefined) return { ...identity,language, minChapterLength: options.minChapterLength??1, maxChapterLength: options.maxChapterLength };
   if (!(ratio > 0 && ratio <= 1)) throw new Error("minChapterLengthRatio must be greater than 0 and at most 1");
-  const target = options.charsPerChapter ?? (language !== "zh" ? SHORT_FICTION_EN_DEFAULT_WORDS_PER_CHAPTER : SHORT_FICTION_DEFAULT_CHARS_PER_CHAPTER);
+  const target = options.charsPerChapter ?? shortFictionDefaultChapterLength(language);
   return { ...identity,language, minChapterLength: options.minChapterLength??Math.max(1, Math.ceil(target * ratio)), maxChapterLength: options.maxChapterLength };
 }
 
@@ -321,9 +320,7 @@ async function produceShort(
   const language = options.language ?? "zh";
   let minimum = shortDraftMinimum(options);
   const chapterCount = positiveInteger(options.chapterCount, SHORT_FICTION_DEFAULT_CHAPTERS, "chapterCount");
-  const charsPerChapter = language !== "zh"
-    ? positiveInteger(options.charsPerChapter, SHORT_FICTION_EN_DEFAULT_WORDS_PER_CHAPTER, "charsPerChapter")
-    : positiveInteger(options.charsPerChapter, SHORT_FICTION_DEFAULT_CHARS_PER_CHAPTER, "charsPerChapter");
+  const charsPerChapter = positiveInteger(options.charsPerChapter, shortFictionDefaultChapterLength(language), "charsPerChapter");
 
   // Resume the current outline from disk when this Work already exists.
   const resumedOutline = providedStoryId
@@ -419,7 +416,7 @@ async function produceShort(
       await writeDraftArtifacts(root, baseDir, "v001-partial", draft, language);
       await syncWorkSourceArtifacts({ projectRoot: root, workId: storyId, accept: false });
       const saved=draft.chapters.filter(chapter=>chapter.title.trim()&&chapter.content.trim()).length;
-      options.onProgress?.(language==='en'
+      options.onProgress?.(language!=='zh'
         ? `Saved ${saved} candidate chapters; ${completedChapterNumbers.length} currently meet the text and length requirements.`
         : `已保存 ${saved} 章候选正文，${completedChapterNumbers.length} 章已满足篇幅与文本要求。`);
     };
@@ -535,7 +532,7 @@ async function produceShort(
       const reviewHash=shortInputHash(productionState.delivery);
       const savedPackage = await tryReadProjectText(root, join(baseDir, "final", "sales-package.json"));
       const packageDirection=stopAfter==="package"&&options.direction.trim()&&options.direction!==productionState.intent
-        ? [productionState.intent,language==="en"?"Current packaging request:":"本次包装要求：",options.direction].join("\n\n")
+        ? [productionState.intent,language!=="zh"?"Current packaging request:":"本次包装要求：",options.direction].join("\n\n")
         : productionState.intent;
       salesPackage = cachedPackage?.status === "completed" && cachedPackage.inputHash === inputHash && cachedPackage.reviewHash===reviewHash && savedPackage && !options.retryStages?.includes("package")
         ? JSON.parse(savedPackage) as ShortFictionSalesPackage
@@ -726,7 +723,7 @@ async function reviseShortFictionWithLock(options: ShortFictionRunOptions & { re
   ] });
   const revised = checkpoint.finalization?.result ?? await new ShortFictionWriterAgent(options.runtimes.writer).reviseDraft({
     direction:options.direction,language,chapterCount,
-    charsPerChapter: revisionOptions.charsPerChapter ?? (language==="en"?SHORT_FICTION_EN_DEFAULT_WORDS_PER_CHAPTER:SHORT_FICTION_DEFAULT_CHARS_PER_CHAPTER),
+    charsPerChapter: revisionOptions.charsPerChapter ?? shortFictionDefaultChapterLength(language),
     minChapterLength:minimum.minChapterLength,maxChapterLength:minimum.maxChapterLength,openingHookChars:minimum.openingHookChars,draft,chapterNumbers,
     outlineMarkdown,review,resume,
     onRevisionProgress:async(progress)=>{

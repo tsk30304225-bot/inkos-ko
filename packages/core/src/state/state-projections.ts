@@ -10,8 +10,13 @@ export function renderHooksProjection(
   options?: { readonly currentChapter?: number },
 ): string {
   void options;
-  const title = language !== "zh" ? "# Pending Hooks" : "# 伏笔池";
-  const headers = language !== "zh"
+  const title = language === "ko" ? "# 복선 목록" : language !== "zh" ? "# Pending Hooks" : "# 伏笔池";
+  const headers = language === "ko"
+    ? [
+      "| hook_id | 시작 회차 | 유형 | 상태 | 최근 진전 회차 | 회수 예정 | 메모 |",
+      "| --- | --- | --- | --- | --- | --- | --- |",
+    ]
+    : language !== "zh"
     ? [
       "| hook_id | start_chapter | type | status | last_advanced_chapter | expected_payoff | notes |",
       "| --- | --- | --- | --- | --- | --- | --- |",
@@ -46,8 +51,13 @@ export function renderChapterSummariesProjection(
   state: ChapterSummariesState,
   language: "zh" | "en" | "ko" = "zh",
 ): string {
-  const title = language !== "zh" ? "# Chapter Summaries" : "# 章节摘要";
-  const headers = language !== "zh"
+  const title = language === "ko" ? "# 회차 요약" : language !== "zh" ? "# Chapter Summaries" : "# 章节摘要";
+  const headers = language === "ko"
+    ? [
+      "| 회차 | 제목 | 등장인물 | 주요 사건 | 상태 변화 | 복선 변화 | 분위기 | 회차 유형 |",
+      "| --- | --- | --- | --- | --- | --- | --- | --- |",
+    ]
+    : language !== "zh"
     ? [
       "| Chapter | Title | Characters | Key Events | State Changes | Hook Activity | Mood | Chapter Type |",
       "| --- | --- | --- | --- | --- | --- | --- | --- |",
@@ -79,9 +89,14 @@ export function renderCurrentStateProjection(
   state: CurrentStateState,
   language: "zh" | "en" | "ko" = "zh",
 ): string {
-  const title = language !== "zh" ? "# Current State" : "# 当前状态";
-  const chapterLabel = language !== "zh" ? "Current chapter" : "当前章节";
-  const headers = language !== "zh"
+  const title = language === "ko" ? "# 현재 상태" : language !== "zh" ? "# Current State" : "# 当前状态";
+  const chapterLabel = language === "ko" ? "현재 회차" : language !== "zh" ? "Current chapter" : "当前章节";
+  const headers = language === "ko"
+    ? [
+        "| 대상 | 관계·속성 | 현재 사실 | 적용 시작 회차 | 근거 회차 |",
+        "| --- | --- | --- | --- | --- |",
+      ]
+    : language !== "zh"
     ? [
         "| Subject | Predicate | Object | Valid from | Source chapter |",
         "| --- | --- | --- | --- | --- |",
