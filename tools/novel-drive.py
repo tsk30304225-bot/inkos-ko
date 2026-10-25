@@ -13,6 +13,8 @@ settings - never from the command line or chat:
 
   novel-drive.py pack  <project> [out.tar.gz | -o out.tar.gz] [--resume]
   novel-drive.py unpack <archive> <dest>
+  novel-drive.py split <archive> [out_dir] [--part-size 12000]   # parts + <archive>.parts.json
+  novel-drive.py join  <archive>.parts.json [-o out.tar.gz]      # checks every sha256
   novel-drive.py push  <project> [--keep 10]
   novel-drive.py pull  <dest> [--name ARCHIVE_NAME] [--force]
   novel-drive.py list
@@ -172,6 +174,50 @@ def unpack_bytes(data: bytes, dest: Path, force: bool) -> int:
     return count
 
 
+# ------------------------------------------------------------------- parts
+# Drive connectors that take file content inline (base64 in the tool call) cannot
+# carry a whole archive, so it goes up in parts with a manifest (see RUNTIME.md).
+PART_SIZE = 12000
+
+
+def sha256_hex(data: bytes) -> str:
+    return hashlib.sha256(data).hexdigest()
+
+
+def split_archive(archive: Path, out_dir: Path, part_size: int = PART_SIZE) -> Path:
+    data = archive.read_bytes()
+    chunks = [data[i:i + part_size] for i in range(0, len(data), part_size)] or [b""]
+    out_dir.mkdir(parents=True, exist_ok=True)
+    parts = []
+    for index, chunk in enumerate(chunks, start=1):
+        name = f"{archive.name}.part{index}of{len(chunks)}"
+        (out_dir / name).write_bytes(chunk)
+        parts.append({"name": name, "size": len(chunk), "sha256": sha256_hex(chunk)})
+    manifest = out_dir / f"{archive.name}.parts.json"
+    manifest.write_text(json.dumps({"archive": archive.name, "size": len(data), "sha256": sha256_hex(data), "parts": parts},
+                                   ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    return manifest
+
+
+def join_archive(manifest_path: Path, out: Path | None = None) -> Path:
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    folder = manifest_path.parent
+    data = b""
+    for part in manifest["parts"]:
+        path = folder / PurePosixPath(part["name"]).name
+        if not path.is_file():
+            die(f"missing part {path.name}")
+        chunk = path.read_bytes()
+        if len(chunk) != part["size"] or sha256_hex(chunk) != part["sha256"]:
+            die(f"part {path.name} does not match the manifest (size or sha256)")
+        data += chunk
+    if len(data) != manifest["size"] or sha256_hex(data) != manifest["sha256"]:
+        die("joined archive does not match the manifest (size or sha256)")
+    target = out or folder / PurePosixPath(manifest["archive"]).name
+    target.write_bytes(data)
+    return target
+
+
 # ------------------------------------------------------------------- drive
 def credentials(names: tuple[str, ...] = ENV) -> dict[str, str]:
     missing = [name for name in names if not os.environ.get(name)]
@@ -265,6 +311,9 @@ def main(argv: list[str] | None = None) -> None:
     p = sub.add_parser("pack"); p.add_argument("project"); p.add_argument("archive", nargs="?"); p.add_argument("-o", "--output")
     p.add_argument("--resume", action="store_true", help="only what continuing the work needs (no history)")
     p = sub.add_parser("unpack"); p.add_argument("archive"); p.add_argument("dest"); p.add_argument("--force", action="store_true")
+    p = sub.add_parser("split"); p.add_argument("archive"); p.add_argument("out_dir", nargs="?")
+    p.add_argument("--part-size", type=int, default=PART_SIZE)
+    p = sub.add_parser("join"); p.add_argument("manifest"); p.add_argument("-o", "--output")
     p = sub.add_parser("push"); p.add_argument("project"); p.add_argument("--keep", type=int, default=10)
     p.add_argument("--force", action="store_true", help="push even if Drive's newest archive is not this copy's base")
     p = sub.add_parser("pull"); p.add_argument("dest"); p.add_argument("--name"); p.add_argument("--key", help="work key (archive name part)")
@@ -282,6 +331,14 @@ def main(argv: list[str] | None = None) -> None:
     elif args.command == "unpack":
         count = unpack_bytes(Path(args.archive).read_bytes(), Path(args.dest), args.force)
         print(f"unpacked {count} files into {args.dest}")
+    elif args.command == "split":
+        archive = Path(args.archive)
+        manifest = split_archive(archive, Path(args.out_dir or f"{archive}.parts"), args.part_size)
+        info = json.loads(manifest.read_text(encoding="utf-8"))
+        print(f"split {archive.name} ({info['size']} bytes, sha256 {info['sha256']}) into {len(info['parts'])} parts; manifest {manifest}")
+    elif args.command == "join":
+        target = join_archive(Path(args.manifest), Path(args.output) if args.output else None)
+        print(f"joined {target} (size and sha256 match the manifest)")
     elif args.command == "init-folder":
         token = access_token(credentials(AUTH_ENV))
         _, _, body = http("POST", f"{API}/files?fields=id,name", token=token,

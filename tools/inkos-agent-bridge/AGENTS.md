@@ -146,12 +146,29 @@ In the Korean fork, novel projects live only in the container. Follow this polic
 
 ## 원고 보관 지침 (모든 실행 환경)
 - 작품 폴더와 원고는 공개 포크에 커밋하지 않는다.
-- 회차 하나를 끝낼 때마다, 그리고 세션 끝에:
-  python3 tools/novel-drive.py pack <작품 폴더> <작품ID>_<YYYYMMDD-HHMM>_<마지막 회차>화.tar.gz
-  → 이 환경의 Google Drive 연결로 "Inkos ko" 폴더에 올리고, 올린 파일 이름을 사용자에게 보고한다.
-- 압축본 업로드가 안 되면(크기 제한, 연결 오류 등): 회차 원고와 상태 파일만 텍스트로 올리거나, 사용자에게 파일로 넘긴다. 실패 사실을 보고에 적는다.
-- 세션 시작: "Inkos ko"에서 그 작품의 가장 최근 압축본을 받아 unpack하기 전에, 파일 이름과 마지막 회차를 사용자에게 보여주고 확인받는다.
+- 회차 하나를 끝낼 때마다, 그리고 세션 끝에 재개용 압축본을 만든다:
+  python3 tools/novel-drive.py pack <작품 폴더> <작품ID>_<YYYYMMDD-HHMM>_<마지막 회차>화.tar.gz --resume
+- 보관 경로는 이 순서로 쓰고, 쓴 경로와 파일 이름(원본 크기·sha256 포함)을 사용자에게 보고한다.
+  1. 사용자에게 파일로 건넨다(Claude Code는 파일 보내기 도구, 다른 환경은 그 환경의 파일 첨부·다운로드 기능).
+  2. 이 환경의 Google Drive 연결로 "Inkos ko" 폴더에 조각으로 올린다. 압축본이 작을 때만 쓴다(아래 "조각 업로드").
+     10화 이상이면 조각 수가 늘어나므로 1 또는 3을 쓴다.
+  3. OAuth `novel-drive.py push` — 사용자가 인증 정보를 환경 비밀값에 등록한 경우만(선택). exit 3이면 `--force` 없이 멈추고 보고한다.
+- 어느 경로도 안 되면 실패 사실과 이유를 보고에 적는다.
+- 세션 시작: 받은 압축본을 unpack하기 전에 파일 이름, 마지막 회차, sha256을 사용자에게 보여주고 확인받는다.
 - 한 작품을 두 환경에서 동시에 작업하지 않는다.
+
+### 파일로 건네고 다음 세션에서 받기
+- 건네기(Claude Code): 압축본을 파일 보내기 도구(`SendUserFile`, 첨부 형식)로 보낸다. 사용자는 Claude 앱 대화에서 파일 카드를 눌러 휴대폰에 저장한다.
+- 받기(다음 세션): 사용자가 새 세션 대화에 그 `.tar.gz`를 첨부한다. Claude Code 클라우드 세션에서는 `/root/.claude/uploads/<세션ID>/<접두어>-<파일명>`에 놓인다.
+  `sha256sum`으로 보고했던 값과 맞춘 뒤 `python3 tools/novel-drive.py unpack <파일> <작품 폴더>`로 푼다.
+
+### 조각 업로드 (Drive 연결 도구가 내용을 호출 안에 직접 받는 경우)
+- 나누기: `python3 tools/novel-drive.py split <압축본> [폴더]` → `<압축본>.part1ofN` … `<압축본>.partNofN`(기본 12,000바이트, base64 약 16,000자)과
+  목록 파일 `<압축본>.parts.json`(압축본 이름·크기·sha256, 조각마다 이름·크기·sha256).
+- 올리기: 목록 파일과 조각 N개를 모두 "Inkos ko"에 올린다(바이너리는 `application/octet-stream`, 변환 끔). Drive가 돌려준 크기를 목록과 맞춘다.
+- 받기: 목록 파일과 조각을 한 폴더에 받은 뒤
+  `python3 tools/novel-drive.py join <압축본>.parts.json` — 조각마다, 그리고 이은 결과의 크기·sha256을 목록과 대조하고 하나라도 다르면 멈춘다.
+  스크립트가 없을 때: `cat <압축본>.part1ofN … <압축본>.partNofN > <압축본>` 후 `sha256sum <압축본>`을 목록의 `sha256`과 비교한다.
 
 "Inkos ko" folder ID: `1FYkA9t5AiI3u31cL0uM8dSFjgf5LxnEU`. The OAuth `novel-drive.py push`/`pull`
 sync is optional. If `push` exits 3 (overwrite protection), do not use `--force`;

@@ -163,6 +163,21 @@ rebuilt = tmp / "resumed/works/달빛/revisions/ch1/rev-new.md"
 check("unpack rebuilds the current revision snapshot from source when the checksum matches",
       r.returncode == 0 and rebuilt.read_bytes() == chapter_bytes and not (tmp / "resumed/works/달빛/revisions/old/rev-old.md").exists(), r.stdout + r.stderr)
 
+parts_dir = tmp / "parts"
+r = run("split", str(resume_out), str(parts_dir), "--part-size", "200")
+manifest = json.loads((parts_dir / "resume.tar.gz.parts.json").read_text(encoding="utf-8"))
+part_names = sorted(p.name for p in parts_dir.glob("resume.tar.gz.part*of*"))
+check("split writes numbered parts and a manifest with size and sha256",
+      r.returncode == 0 and manifest["size"] == resume_out.stat().st_size and len(part_names) == len(manifest["parts"]) > 1
+      and manifest["sha256"] == hashlib.sha256(resume_out.read_bytes()).hexdigest(), r.stdout + r.stderr)
+joined = tmp / "joined.tar.gz"
+r = run("join", str(parts_dir / "resume.tar.gz.parts.json"), "-o", str(joined))
+check("join restores the archive byte for byte", r.returncode == 0 and joined.read_bytes() == resume_out.read_bytes(), r.stdout + r.stderr)
+first = parts_dir / manifest["parts"][0]["name"]
+first.write_bytes(b"x" + first.read_bytes()[1:])
+r = run("join", str(parts_dir / "resume.tar.gz.parts.json"), "-o", str(tmp / "bad.tar.gz"))
+check("join refuses a damaged part", r.returncode != 0 and "does not match" in r.stderr and not (tmp / "bad.tar.gz").exists(), r.stdout + r.stderr)
+
 evil = tmp / "evil.tar.gz"
 with tarfile.open(evil, "w:gz") as tar:
     info = tarfile.TarInfo("../escape.txt"); data = b"x"; info.size = 1
