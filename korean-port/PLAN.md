@@ -202,3 +202,14 @@ names, scene order, or signature combinations" 원칙을 그대로 지킨다). �
   - 남은 것(범위 밖이거나 후속 단계): Studio 화면·영감 카드(ko→중국어 프롬프트, 사용자 결정으로 후순위), TUI 문구, 플레이/인터랙티브 필름/예측(대상 장르 밖),
     대본 spec 파일 제목(2-2단계), 동인 정사 표제·단편 검토 보고서 표제(영어로 저장), 번역 EPUB `lang`(언어 이름이 들어감), 프롤로그·에필로그·외전 제목 인식.
   - 다음: 2단계(한국어 스킬). 권장 연결 방식은 SURVEY.md 2절 C안(프로젝트 `language: ko`면 로더가 `skills-ko/` 삽입).
+- 2026-10-25 (`claude/eeum-n0rsol`): **2단계 완료.**
+  - 연결 방식: SURVEY.md 2절 **C안** 채택. `packages/core/src/skills/korean-skill-root.ts` + `builtin-loader.ts` 몇 줄 — 프로젝트 `inkos.json`의 `language`가 `ko`면
+    `packages/core/skills-ko/`를 내장 스킬 바로 위(사용자·프로젝트 스킬 아래)에 끼운다. 이유: 원본 수정 최소, 사용자·프로젝트 덮어쓰기 규칙 유지, 한국어 전용 프로젝트에 맞음.
+    한계: 프로젝트 단위(zh/en 프로젝트 안의 ko 작품은 원본 스킬을 받음). `package.json` `files`에 `skills-ko` 추가.
+  - 새로 쓴 스킬(같은 ID): `inkos-long-writing`(+references 5개: 원본 4개 대응 + 새 `korean-prose.md` 번역투·어미 반복·호칭/존댓말·대사·모바일 문단),
+    `inkos-story-review`(+review-matrix, 한국어 문장·장르별 질문 절 추가), `inkos-story-deslop`(+semantic-cleanup), `inkos-short-writing`(+production-checklist).
+    한국어 검색 토크나이저가 약하므로(SURVEY 2절) 장편 references는 모두 SKILL.md에 직접 링크해 항상 들어가게 했다. 프로토콜 값(hook 상태·회수 시점 enum, local/structural/unknown)은 원본 그대로.
+  - 검증: `korean-skills.test.ts` 6개 — zh/en/미설정 프로젝트는 원본 스킬, ko 프로젝트는 한국어 스킬, ko에서도 프로젝트 스킬이 이김, 링크된 references 전부 로드,
+    **실제 writer 메시지(`prepareWorkerMessages`)에 ko 프로젝트만 `# 한국어 장편 집필 방법`과 `# 한국어 문장 기준`이 들어가고 en 프로젝트는 원본이 들어감**.
+    전체(프록시 변수 제거): core 725 / studio 307 / cli 94 통과.
+  - 다음: 2-1단계(장르 references). 장르 값은 `light-martial`, `fantasy`, `modern-fantasy`(SURVEY 3절 제안).
