@@ -121,6 +121,30 @@ check("unpack ok", r.returncode == 0 and (tmp / "restored/works/달빛/source/ch
 r = run("unpack", str(out), str(tmp / "restored"))
 check("unpack refuses to overwrite a project without --force", r.returncode != 0)
 
+# xz is the default format; gz archives made before the switch still unpack.
+r = run("pack", str(project), "-o", str(tmp / "plain"))
+xz_out = tmp / "plain.tar.xz"
+check("pack writes .tar.xz by default", r.returncode == 0 and xz_out.read_bytes().startswith(b"\xfd7zXZ\x00") and "plain.tar.xz" in r.stdout, r.stdout + r.stderr)
+r = run("unpack", str(xz_out), str(tmp / "restored-xz"))
+check("unpack reads an xz archive", r.returncode == 0 and (tmp / "restored-xz/works/달빛/source/chapters/0001_시작.md").read_text(encoding="utf-8").endswith("본문"), r.stdout + r.stderr)
+check("a .tar.gz name still gives gzip", out.read_bytes().startswith(b"\x1f\x8b"))
+r = run("pack", str(project), str(tmp / "forced.tar.xz"), "--gz")
+check("--gz writes gzip and fixes the name", r.returncode == 0 and (tmp / "forced.tar.gz").read_bytes().startswith(b"\x1f\x8b") and not (tmp / "forced.tar.xz").exists(), r.stdout + r.stderr)
+
+
+def run_without_lzma(*args):
+    code = "import runpy, sys; sys.modules['lzma'] = None; sys.argv = [sys.argv[1]] + sys.argv[2:]; runpy.run_path(sys.argv[0], run_name='__main__')"
+    return subprocess.run([sys.executable, "-I", "-c", code, str(TOOL), *args], env=env, capture_output=True, text=True)
+
+
+r = run_without_lzma("pack", str(project), str(tmp / "nolzma.tar.xz"))
+check("without lzma, pack warns and writes .tar.gz", r.returncode == 0 and "lzma module is not available" in r.stderr
+      and (tmp / "nolzma.tar.gz").read_bytes().startswith(b"\x1f\x8b") and not (tmp / "nolzma.tar.xz").exists(), r.stdout + r.stderr)
+r = run_without_lzma("unpack", str(out), str(tmp / "restored-nolzma"))
+check("without lzma, gz archives still unpack", r.returncode == 0 and (tmp / "restored-nolzma/works/달빛/source/chapters/0001_시작.md").exists(), r.stdout + r.stderr)
+r = run_without_lzma("unpack", str(xz_out), str(tmp / "restored-nolzma-xz"))
+check("without lzma, an xz archive fails with a clear message", r.returncode != 0 and "xz archive" in r.stderr and "tar -xJf" in r.stderr, r.stdout + r.stderr)
+
 import hashlib
 resume_project = tmp / "이어쓰기"
 work = resume_project / "works" / "달빛"

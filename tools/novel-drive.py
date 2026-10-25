@@ -11,8 +11,8 @@ settings - never from the command line or chat:
   INKOS_GDRIVE_CLIENT_ID, INKOS_GDRIVE_CLIENT_SECRET, INKOS_GDRIVE_REFRESH_TOKEN
   INKOS_GDRIVE_FOLDER_ID   (the Drive folder that holds the archives)
 
-  novel-drive.py pack  <project> [out.tar.gz | -o out.tar.gz] [--resume]
-  novel-drive.py unpack <archive> <dest>
+  novel-drive.py pack  <project> [out.tar.xz | -o out.tar.xz] [--resume] [--gz]
+  novel-drive.py unpack <archive> <dest>          # .tar.xz or .tar.gz, detected from the content
   novel-drive.py split <archive> [out_dir] [--part-size 12000]   # parts + <archive>.parts.json
   novel-drive.py join  <archive>.parts.json [-o out.tar.gz]      # checks every sha256
   novel-drive.py push  <project> [--keep 10]      # OAuth push/pull/list/init-folder: 선택, 앱이 쓰지 않음
@@ -135,13 +135,39 @@ def restore_current_snapshots(dest: Path) -> int:
     return restored
 
 
-def pack_bytes(project: Path, resume: bool = False) -> bytes:
+def xz_available() -> bool:
+    try:
+        import lzma  # noqa: F401  (some minimal Python builds lack it)
+    except ImportError:
+        return False
+    return True
+
+
+def pack_format(output: str | None, force_gz: bool) -> str:
+    """xz by default (archives about half the gzip size); gz when asked for, named .tar.gz/.tgz, or when lzma is missing."""
+    if force_gz or (output and output.endswith((".tar.gz", ".tgz"))):
+        return "gz"
+    if not xz_available():
+        print("warning: Python lzma module is not available; writing a gzip archive (.tar.gz) instead of .tar.xz", file=sys.stderr)
+        return "gz"
+    return "xz"
+
+
+def with_format_suffix(name: str, fmt: str) -> str:
+    for suffix in (".tar.xz", ".txz", ".tar.gz", ".tgz"):
+        if name.endswith(suffix):
+            name = name[: -len(suffix)]
+            break
+    return f"{name}.tar.{fmt}"
+
+
+def pack_bytes(project: Path, resume: bool = False, fmt: str = "gz") -> bytes:
     if not (project / "inkos.json").is_file():
         die(f"{project} is not an InkOS project (no inkos.json)")
     keep = resume_paths(project) if resume else set()
     snapshots: dict[str, set[str]] = {}
     buffer = io.BytesIO()
-    with tarfile.open(fileobj=buffer, mode="w:gz") as tar:
+    with tarfile.open(fileobj=buffer, mode=f"w:{fmt}") as tar:
         for path in sorted(project.rglob("*")):
             rel = PurePosixPath(path.relative_to(project).as_posix())
             if path.is_symlink() or not included(rel):
@@ -158,7 +184,10 @@ def unpack_bytes(data: bytes, dest: Path, force: bool) -> int:
     if (dest / "inkos.json").exists() and not force:
         die(f"{dest} already contains a project; pass --force to overwrite files from the archive")
     count = 0
-    with tarfile.open(fileobj=io.BytesIO(data), mode="r:gz") as tar:
+    if data.startswith(b"\xfd7zXZ\x00") and not xz_available():
+        die("this is an xz archive (.tar.xz) but the Python lzma module is not available; "
+            "unpack it elsewhere or use `tar -xJf` with the xz tool")
+    with tarfile.open(fileobj=io.BytesIO(data), mode="r:*") as tar:
         for member in tar.getmembers():
             rel = PurePosixPath(member.name)
             if not member.isfile() or rel.is_absolute() or ".." in rel.parts:
@@ -310,6 +339,7 @@ def main(argv: list[str] | None = None) -> None:
     sub = parser.add_subparsers(dest="command", required=True)
     p = sub.add_parser("pack"); p.add_argument("project"); p.add_argument("archive", nargs="?"); p.add_argument("-o", "--output")
     p.add_argument("--resume", action="store_true", help="only what continuing the work needs (no history)")
+    p.add_argument("--gz", action="store_true", help="write gzip (.tar.gz) instead of the default xz")
     p = sub.add_parser("unpack"); p.add_argument("archive"); p.add_argument("dest"); p.add_argument("--force", action="store_true")
     p = sub.add_parser("split"); p.add_argument("archive"); p.add_argument("out_dir", nargs="?")
     p.add_argument("--part-size", type=int, default=PART_SIZE)
@@ -324,8 +354,10 @@ def main(argv: list[str] | None = None) -> None:
 
     if args.command == "pack":
         project = Path(args.project)
-        data = pack_bytes(project, resume=args.resume)
-        out = Path(args.output or args.archive or archive_name(project_key(project)))
+        requested = args.output or args.archive
+        fmt = pack_format(requested, args.gz)
+        data = pack_bytes(project, resume=args.resume, fmt=fmt)
+        out = Path(with_format_suffix(requested or archive_name(project_key(project)), fmt))
         out.write_bytes(data)
         print(f"packed {project} -> {out} ({len(data)} bytes)")
     elif args.command == "unpack":
