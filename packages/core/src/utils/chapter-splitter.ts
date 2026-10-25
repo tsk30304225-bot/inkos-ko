@@ -6,7 +6,9 @@ export interface SplitChapter {
 const NUMBERED_HEADING = /^#{0,6}\s*(?:第([零〇○Ｏ０一二三四五六七八九十百千万\d]+)(章|回)(?:[:：]|\s+)?\s*(.*)|Chapter\s+(\d+|[IVXLCDM]+)[.:]?\s*(.*))$/i;
 
 /** Numbered document syntax shared by persistence, export and import. */
-export function readChapterHeading(line: string): {number:number;title:string;language:'zh'|'en'} | undefined {
+export function readChapterHeading(line: string): {number:number;title:string;language:'zh' | 'en' | 'ko'} | undefined {
+  const korean = /^#{0,6}\s*(?:제\s*)?(\d+)\s*[화장](?:[:：.]|\s+)?\s*(.*)$/u.exec(line.trim());
+  if (korean && Number.isSafeInteger(Number(korean[1]))) return {number:Number(korean[1]),title:korean[2]!.trim(),language:"ko"};
   const match=NUMBERED_HEADING.exec(line.trim());
   if(!match)return undefined;
   const ordinal=match[1]??match[4]!;
@@ -98,6 +100,7 @@ export function splitChapters(
 }
 
 function inferFallbackTitle(headingLine: string, chapterNumber: number): string {
+  if (/(?:제\s*)?\d+\s*[화장]/u.test(headingLine)) return `제${chapterNumber}화`;
   if (/chapter\s+(?:\d+|[ivxlcdm]+)/i.test(headingLine)) {
     return `Chapter ${chapterNumber}`;
   }

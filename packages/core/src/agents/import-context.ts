@@ -13,9 +13,9 @@ export interface ImportedChapterSource {
 
 export function renderCompleteImportSource(
   chapters: ReadonlyArray<ImportedChapterSource>,
-  language: "zh" | "en",
+  language: "zh" | "en" | "ko",
 ): string {
-  return chapters.map((chapter, index) => language === "en"
+  return chapters.map((chapter, index) => language !== "zh"
     ? `Chapter ${index + 1}: ${chapter.title}\n\n${chapter.content}`
     : `第${index + 1}章 ${chapter.title}\n\n${chapter.content}`)
     .join("\n\n---\n\n");
@@ -26,7 +26,7 @@ export async function compileImportSource(input: {
   readonly model: string;
   readonly projectRoot: string;
   readonly chapters: ReadonlyArray<ImportedChapterSource>;
-  readonly language: "zh" | "en";
+  readonly language: "zh" | "en" | "ko";
   readonly activeSkills?: ReadonlyArray<ActivatedSkillGuidance>;
   readonly signal?: AbortSignal;
 }): Promise<{ readonly markdown: string; readonly compiled: boolean; readonly chunkCount: number }> {
@@ -49,7 +49,7 @@ export async function compileImportSource(input: {
     const response = await runWorkerAgent(input.client, input.model, await prepareWorkerMessages({ ...input, activatedSkills: mergeActivatedSkillGuidance(input.activeSkills ?? [], skills) }, [
       {
         role: "system",
-        content: input.language === "en"
+        content: input.language !== "zh"
           ? "Apply the activated import and continuation Skills to this complete source chunk. Return traceable Markdown only."
           : "按已激活的导入与续写 Skill 处理这份完整源片段，只返回可追溯 Markdown。",
       },
@@ -60,16 +60,16 @@ export async function compileImportSource(input: {
     });
     const body = response.content.trim();
     if (!body) throw new Error(`Import context compiler returned empty output for chunk ${index + 1}/${chunks.length}.`);
-    compiled.push(`## ${input.language === "en" ? "Compiled source chunk" : "编译源片段"} ${index + 1}/${chunks.length}\n\n${body}`);
+    compiled.push(`## ${input.language !== "zh" ? "Compiled source chunk" : "编译源片段"} ${index + 1}/${chunks.length}\n\n${body}`);
   }
-  const catalog = input.chapters.map((chapter, index) => input.language === "en"
+  const catalog = input.chapters.map((chapter, index) => input.language !== "zh"
     ? `- Chapter ${index + 1}: ${chapter.title}`
     : `- 第${index + 1}章：${chapter.title}`).join("\n");
   return {
     markdown: [
-      input.language === "en" ? "# Compiled import context" : "# 编译后的导入上下文",
+      input.language !== "zh" ? "# Compiled import context" : "# 编译后的导入上下文",
       "",
-      input.language === "en" ? "## Complete chapter catalog" : "## 完整章节目录",
+      input.language !== "zh" ? "## Complete chapter catalog" : "## 完整章节目录",
       catalog,
       "",
       ...compiled,

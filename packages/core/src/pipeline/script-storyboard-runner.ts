@@ -36,7 +36,7 @@ export interface ScriptCreationRunOptions {
   readonly requirements?: string;
   readonly episodeCount?: number;
   readonly episodeDuration?: string;
-  readonly language?: "zh" | "en";
+  readonly language?: "zh" | "en" | "ko";
   readonly projectId?: string;
   readonly onProgress?: (message: string) => void;
 }
@@ -54,7 +54,7 @@ export interface StoryboardCreationRunOptions {
   readonly aspectRatio?: string;
   readonly granularity?: string;
   readonly maxShots?: number;
-  readonly language?: "zh" | "en";
+  readonly language?: "zh" | "en" | "ko";
   readonly projectId?: string;
   readonly onProgress?: (message: string) => void;
 }
@@ -74,7 +74,7 @@ export interface InteractiveFilmCreationRunOptions {
   readonly episodeDuration?: string;
   readonly budget?: string;
   readonly referenceMode?: string;
-  readonly language?: "zh" | "en";
+  readonly language?: "zh" | "en" | "ko";
   readonly projectId?: string;
   readonly onProgress?: (message: string) => void;
 }
@@ -443,7 +443,7 @@ async function ensureUnwrittenWork(
   projectId: string,
   title: string,
   profileId: "script" | "storyboard" | "interactive-film",
-  language: "zh" | "en",
+  language: "zh" | "en" | "ko",
 ): Promise<void> {
   try {
     const existing = await loadWorkManifest(projectRoot, projectId);
@@ -516,9 +516,9 @@ async function ensureProjectDir(projectRoot: string, relativePath: string): Prom
 function mergeRequirements(
   instruction: string,
   requirements: string | undefined,
-  language: "zh" | "en" = "zh",
+  language: "zh" | "en" | "ko" = "zh",
 ): string {
-  const extraLabel = language === "en" ? "Additional requirements:" : "补充要求：";
+  const extraLabel = language !== "zh" ? "Additional requirements:" : "补充要求：";
   return [
     instruction.trim(),
     requirements?.trim() ? `\n${extraLabel}\n${requirements.trim()}` : "",

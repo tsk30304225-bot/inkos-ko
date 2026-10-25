@@ -1,10 +1,10 @@
 const UNSAFE_BOOK_ID_RE = /[\u0000-\u001f\u007f/\\:*?"'`{}<>|]/u;
 
 export function deriveBookIdFromTitle(title: string): string {
-  return title
+  return title.normalize("NFC")
     .trim()
     .toLowerCase()
-    .replace(/[^a-z0-9\u4e00-\u9fff]/gu, "-")
+    .replace(/[^\p{L}\p{N}]/gu, "-")
     .replace(/-+/g, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 30);

@@ -135,12 +135,12 @@ export function buildStateReconciliationFeedback(
   language: LengthLanguage,
 ): string {
   if (observations.length === 0) {
-    return language === "en"
+    return language !== "zh"
       ? "The previous settlement contradicted the chapter text. Reconcile truth files strictly to the body."
       : "上一次状态结算与正文矛盾。请严格以正文为准修正 truth files。";
   }
 
-  if (language === "en") {
+  if (language !== "zh") {
     return [
       "The previous settlement needs reconciliation. Align these differences with the chapter body:",
       ...observations.map((observation) => `- [${observation.code}] ${observation.summary}`),
@@ -158,7 +158,7 @@ export function unresolvedStateObservation(
 ): Observation {
   return {
     code: "state-validation",
-    summary: language === "en"
+    summary: language !== "zh"
       ? "State reconciliation remains unresolved after recalculation."
       : "状态结算重算后仍有未解决差异。",
     evidence: [],

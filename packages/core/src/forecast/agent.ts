@@ -41,7 +41,7 @@ export class NarrativeForecastAgent extends BaseAgent {
 
     const tool = {
       name: "submit_narrative_forecast",
-      label: input.language === "en" ? "Submit narrative forecast" : "提交剧情推演",
+      label: input.language !== "zh" ? "Submit narrative forecast" : "提交剧情推演",
       description: "Submit the complete non-canonical branch set.",
       parameters: ForecastResultToolSchema,
     } as const;

@@ -54,7 +54,7 @@ export const agentCommand = new Command("agent")
           ...(work ? { profileId: work.profileId, workId: work.id } : {}),
           actionSource,
           requestedIntent,
-          language: config.language ?? "zh",
+          language: config.language ?? "ko",
           pipeline,
           projectRoot: root,
           model: client._piModel

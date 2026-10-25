@@ -85,7 +85,7 @@ export interface ShortFictionSalesPackage {
 }
 
 export function renderShortFictionSalesPackage(sales: ShortFictionSalesPackage, language: ShortFictionLanguage): string {
-  const headings = language === "en"
+  const headings = language !== "zh"
     ? ["## Synopsis", "## Selling Points", "## Cover Prompt"]
     : ["## 简介", "## 卖点", "## 封面提示词"];
   return [`# ${sales.title}`, "", headings[0], "", sales.intro, "", headings[1], "",
@@ -168,7 +168,7 @@ export class ShortFictionOutlineAgent extends BaseAgent {
     return {
       storyTitle: response.result.storyTitle.trim(),
       rawContent: [response.result.planMarkdown.trim(), ...Array.from({length:input.chapterCount},(_,index) => (
-        `## ${input.language === "en" ? `Chapter ${index+1}` : `第${index+1}章`}\n\n${(response.result as Record<string,string>)[`chapter_${index+1}_plan`]!.trim()}`
+        `## ${input.language !== "zh" ? `Chapter ${index+1}` : `第${index+1}章`}\n\n${(response.result as Record<string,string>)[`chapter_${index+1}_plan`]!.trim()}`
       ))].join("\n\n"),
     };
   }
@@ -635,7 +635,7 @@ export function renderShortFictionDraftMarkdown(
   draft: ShortFictionBatchDraft,
   language: ShortFictionLanguage = "zh",
 ): string {
-  const hookHeading = language === "en" ? "## Opening Hook" : "## 开篇钩子";
+  const hookHeading = language !== "zh" ? "## Opening Hook" : "## 开篇钩子";
   const completedChapters = draft.chapters.filter((chapter) => chapter.title.trim() && chapter.content.trim());
   return [
     `# ${draft.storyTitle}`,
@@ -655,7 +655,7 @@ export function formatShortFictionChapterHeading(
 ): string {
   const trimmed = title.trim();
   if (!trimmed) throw new Error(`Short-fiction chapter ${number} has no title.`);
-  return language === "en" ? `Chapter ${number}: ${trimmed}` : `第${number}章 ${trimmed}`;
+  return language !== "zh" ? `Chapter ${number}: ${trimmed}` : `第${number}章 ${trimmed}`;
 }
 
 // charsPerChapter is the language's native unit (zh chars / en words). The 2.2

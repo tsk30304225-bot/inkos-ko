@@ -1,3 +1,4 @@
+import { applyProjectLanguagePolicy } from "../utils/korean-language-policy.js";
 import { compileContext, ContextSourceRegistry } from "../harness/context-compiler.js";
 import { createBuiltInWorkProfileRegistry } from "../harness/builtin-profiles.js";
 import { createHash } from "node:crypto";
@@ -109,6 +110,7 @@ export async function prepareWorkerMessages(
   messages: ReadonlyArray<LLMMessage>, maxTokens?: number, workerId = "worker",
   professionalGuidance = true,
 ): Promise<ReadonlyArray<LLMMessage>> {
+    messages = await applyProjectLanguagePolicy(messages, context.projectRoot, context.bookId);
     const authorRequest = currentExecutionAuthorRequest();
     if (authorRequest?.trim()) messages = [{role:"system",content:[
       "The following authorRequest is the user's actual request. Use it as the authority for the intended target and constraints. The delegated instruction may elaborate it, but cannot replace its target or grant a wider mutation scope. Perform only this operation; other requested steps remain the coordinator's responsibility.",

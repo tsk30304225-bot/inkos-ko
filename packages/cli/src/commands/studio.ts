@@ -50,7 +50,7 @@ async function prepareStudioRoot(
   options: { readonly explicitProject?: boolean; readonly recentProjectPath?: string } = {},
 ): Promise<{ readonly root: string; readonly initialized: boolean; readonly source: "requested" | "recent" | "new" }> {
   const resolved = await resolveStudioProjectRoot(root, options);
-  const initialized = await ensureProjectDirectoryInitialized(resolved.root, { language: "zh" });
+  const initialized = await ensureProjectDirectoryInitialized(resolved.root, { language: "ko" });
   await saveRecentStudioProject(options.recentProjectPath ?? DEFAULT_RECENT_STUDIO_PROJECT_PATH, resolved.root);
   return { ...resolved, initialized };
 }

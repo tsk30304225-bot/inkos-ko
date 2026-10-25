@@ -1,3 +1,4 @@
+import { parseWritingLanguage } from "../language-options.js";
 import { Command } from "commander";
 import { readFile, readdir, stat } from "node:fs/promises";
 import { join, resolve, basename } from "node:path";
@@ -31,7 +32,7 @@ fanficCommand
   .option("--platform <platform>", "Target platform", "other")
   .option("--target-chapters <n>", "Target chapter count", "100")
   .option("--chapter-words <n>", "Words per chapter", "3000")
-  .option("--lang <language>", "Writing language: zh or en. Defaults from the project.")
+  .option("--lang <language>", "Writing language: ko, zh or en. Defaults from the project.", parseWritingLanguage)
   .option("--json", "Output JSON")
   .action(async (opts) => {
     try {

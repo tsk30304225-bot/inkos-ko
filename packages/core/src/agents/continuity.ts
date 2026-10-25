@@ -31,12 +31,12 @@ export class ContinuityAuditor extends BaseAgent {
     chapterNumber: number,
     _genre: string | undefined,
     options: {
-      readonly language: "zh" | "en";
+      readonly language: "zh" | "en" | "ko";
       readonly contextPackage: ContextPackage;
       readonly temperature?: number;
     },
   ): Promise<AuditResult> {
-    const isEnglish = options.language === "en";
+    const isEnglish = options.language !== "zh";
     const systemPrompt = isEnglish
       ? "Audit this chapter against the activated review Skill and supplied governed context. Identify each observation with a code, assessment and exact numbered source lines. Do not estimate length; the host computes it. Return a concise overall summary. An empty observations array is valid."
       : "按已激活的审稿 Skill 和权威上下文审查本章。为每条观察提交代码、判断以及所给编号原文中的确切证据行。不估算字数，字数由宿主计算。提交简短总结，observations 为空是合法结果。";

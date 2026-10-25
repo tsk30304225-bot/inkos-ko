@@ -14,7 +14,7 @@ export interface PlayOpeningStateInput {
   readonly sceneText: string;
   readonly suggestedActions: readonly string[];
   readonly context: string;
-  readonly language?: "zh" | "en";
+  readonly language?: "zh" | "en" | "ko";
   readonly worldPremise?: string;
 }
 
@@ -27,7 +27,7 @@ export interface PlayTurnInput {
   readonly context: string;
   readonly replayContext?: string;
   readonly mode: "open" | "guided";
-  readonly language?: "zh" | "en";
+  readonly language?: "zh" | "en" | "ko";
   readonly worldPremise?: string;
 }
 
@@ -311,8 +311,8 @@ function hasMutationResult(mutation: PlayMutation): boolean {
     || mutation.notes.length > 0;
 }
 
-function buildOpeningStateSystemPrompt(language: "zh" | "en"): string {
-  return language === "en"
+function buildOpeningStateSystemPrompt(language: "zh" | "en" | "ko"): string {
+  return language !== "zh"
     ? [
         "Extract the authoritative world state already established by the supplied opening scene and world contract.",
         "Do not rewrite the scene or add facts. Always create actor_player and the concrete people, places, objects, clues, and relationships needed to make the opening playable.",
@@ -327,9 +327,9 @@ function buildOpeningStateSystemPrompt(language: "zh" | "en"): string {
       ].join("\n");
 }
 
-function buildOpeningStateUserPrompt(input: PlayOpeningStateInput, language: "zh" | "en"): string {
+function buildOpeningStateUserPrompt(input: PlayOpeningStateInput, language: "zh" | "en" | "ko"): string {
   const premise = input.worldPremise?.trim();
-  return language === "en"
+  return language !== "zh"
     ? [
         `turn: ${input.turn}`,
         ...(premise ? ["World contract:", premise, ""] : []),
@@ -352,15 +352,15 @@ function buildOpeningStateUserPrompt(input: PlayOpeningStateInput, language: "zh
       ].join("\n");
 }
 
-function buildTurnSystemPrompt(mode: "open" | "guided", language: "zh" | "en"): string {
-  const choiceRule = language === "en"
+function buildTurnSystemPrompt(mode: "open" | "guided", language: "zh" | "en" | "ko"): string {
+  const choiceRule = language !== "zh"
     ? mode === "open"
       ? "The open-world surface has no suggestedActions; submit an empty array."
       : "Use suggestedActions only for sparse, grounded choices at a genuine decision point."
     : mode === "open"
       ? "开放世界不提供 suggestedActions，必须提交空数组。"
       : "只在真实抉择点提供少量、基于当前场景的 suggestedActions。";
-  return language === "en"
+  return language !== "zh"
     ? [
         "Apply the activated play-world Skill and resolve one coherent interactive-fiction turn.",
         "In one submission, normalize the player's literal action, project the authoritative world mutation, and render the resulting scene. The prose and mutation must describe the same facts.",
@@ -385,9 +385,9 @@ function buildTurnSystemPrompt(mode: "open" | "guided", language: "zh" | "en"): 
       ].join("\n");
 }
 
-function buildTurnUserPrompt(input: PlayTurnInput, language: "zh" | "en"): string {
+function buildTurnUserPrompt(input: PlayTurnInput, language: "zh" | "en" | "ko"): string {
   const premise = input.worldPremise?.trim();
-  return language === "en"
+  return language !== "zh"
     ? [
         `turn: ${input.turn}`,
         ...(premise ? ["World contract:", premise, ""] : []),

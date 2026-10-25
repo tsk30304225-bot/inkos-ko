@@ -28,7 +28,7 @@ export interface BookCreatePayload {
   readonly title: string;
   readonly genre: string;
   readonly platform: string;
-  readonly language: "zh" | "en";
+  readonly language: "zh" | "en" | "ko";
   readonly targetChapters: number;
   readonly chapterWordCount: number;
   readonly blurb: string;
@@ -66,7 +66,7 @@ const PLATFORMS_EN: ReadonlyArray<PlatformOption> = [
   { value: "other", label: "Other" },
 ];
 
-const PAGE_COPY: Record<"zh" | "en", PlatformCopy> = {
+const PAGE_COPY: Record<"zh" | "en" | "ko", PlatformCopy> = {
   zh: {
     heading: "创建长篇 Work",
     hint: "这里提交的是明确建书动作。想先讨论和完善方向，请回到 Studio Chat 自然交流，确认卡会携带同一份结构化建书参数。",
@@ -101,21 +101,43 @@ const PAGE_COPY: Record<"zh" | "en", PlatformCopy> = {
     creationStatus: "Creating the Work. Its workspace will open when the artifact is ready.",
     creationSteps: ["Saving Work config", "Generating foundation", "Registering artifacts"],
   },
+  ko: {
+    "titleLabel": "제목",
+    "titlePlaceholder": "예: 밤 항구의 장부",
+    "genreLabel": "장르",
+    "genrePlaceholder": "예: 현대판타지, 미스터리, SF, 로맨스",
+    "platformLabel": "목표 플랫폼",
+    "targetChaptersLabel": "목표 회차 수",
+    "chapterWordCountLabel": "회차당 글자 수 (공백 제외)",
+    "briefLabel": "작품 소개 / 핵심 설정",
+    "briefPlaceholder": "세계관, 주인공, 목표, 핵심 갈등과 첫 이야기의 방향을 적으세요.",
+    "createBook": "작품 만들기",
+    "creatingBook": "생성 중…",
+    "creationStatus": "작품을 만들고 있습니다. 완료되면 작업실이 열립니다.",
+    "creationSteps": [
+        "작품 설정 저장",
+        "기초 설정 생성",
+        "작업실 준비"
+    ],
+    "heading": "장편 작품 만들기",
+    "hint": "작품 정보를 입력해 생성을 시작하세요. 방향을 먼저 논의하려면 Studio 대화를 이용하세요."
+}
+
 };
 
 export function pickValidValue(current: string, available: ReadonlyArray<string>): string {
   return current && available.includes(current) ? current : available[0] ?? "";
 }
 
-export function defaultChapterWordsForLanguage(language: "zh" | "en"): string {
+export function defaultChapterWordsForLanguage(language: "zh" | "en" | "ko"): string {
   return language === "en" ? "2000" : "3000";
 }
 
-export function platformOptionsForLanguage(language: "zh" | "en"): ReadonlyArray<PlatformOption> {
-  return language === "en" ? PLATFORMS_EN : PLATFORMS_ZH;
+export function platformOptionsForLanguage(language: "zh" | "en" | "ko"): ReadonlyArray<PlatformOption> {
+  return language === "ko" ? [{ value: "other", label: "기타 / 직접 설정" }] : language === "en" ? PLATFORMS_EN : PLATFORMS_ZH;
 }
 
-export function defaultBookCreateForm(language: "zh" | "en"): BookCreateFormState {
+export function defaultBookCreateForm(language: "zh" | "en" | "ko"): BookCreateFormState {
   return {
     title: "",
     genre: "",
@@ -142,7 +164,7 @@ export function isBookCreateFormReady(form: BookCreateFormState): boolean {
   );
 }
 
-export function buildBookCreatePayload(form: BookCreateFormState, language: "zh" | "en"): BookCreatePayload {
+export function buildBookCreatePayload(form: BookCreateFormState, language: "zh" | "en" | "ko"): BookCreatePayload {
   const targetChapters = parsePositiveInteger(form.targetChapters);
   const chapterWordCount = parsePositiveInteger(form.chapterWordCount);
   if (!targetChapters || !chapterWordCount || !isBookCreateFormReady(form)) {

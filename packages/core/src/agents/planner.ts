@@ -58,7 +58,7 @@ export class PlannerAgent extends BaseAgent {
       seedMaterials.authorIntent,
       seedMaterials.brief,
     ].map((value) => value?.trim()).filter(Boolean).join("\n\n")
-      || (input.book.language === "en"
+      || (input.book.language !== "zh"
         ? `Continue chapter ${input.chapterNumber} from the current Work state.`
         : `根据当前作品状态续写第${input.chapterNumber}章。`);
     const selected = await new ComposerAgent(this.ctx).selectTaskContext({
@@ -121,7 +121,7 @@ export class PlannerAgent extends BaseAgent {
     readonly chapterNumber: number;
     readonly contextPackage: ContextPackage;
     readonly currentInstruction?: string;
-    readonly language?: "zh" | "en";
+    readonly language?: "zh" | "en" | "ko";
     readonly lengthSpec: LengthSpec;
   }): Promise<ChapterMemo> {
     const language = input.language ?? "zh";

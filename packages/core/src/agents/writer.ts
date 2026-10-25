@@ -85,15 +85,15 @@ export class WriterAgent extends BaseAgent {
     return "writer";
   }
 
-  private localize(language: "zh" | "en", messages: { zh: string; en: string }): string {
-    return language === "en" ? messages.en : messages.zh;
+  private localize(language: "zh" | "en" | "ko", messages: { zh: string; en: string }): string {
+    return language !== "zh" ? messages.en : messages.zh;
   }
 
-  private logInfo(language: "zh" | "en", messages: { zh: string; en: string }): void {
+  private logInfo(language: "zh" | "en" | "ko", messages: { zh: string; en: string }): void {
     this.ctx.logger?.info(this.localize(language, messages));
   }
 
-  private logWarn(language: "zh" | "en", messages: { zh: string; en: string }): void {
+  private logWarn(language: "zh" | "en" | "ko", messages: { zh: string; en: string }): void {
     this.ctx.logger?.warn(this.localize(language, messages));
   }
 
@@ -146,8 +146,8 @@ export class WriterAgent extends BaseAgent {
       ],
       {
         name: "submit_chapter_draft",
-        label: resolvedLanguage === "en" ? "Submit chapter draft" : "提交章节初稿",
-        description: resolvedLanguage === "en"
+        label: resolvedLanguage !== "zh" ? "Submit chapter draft" : "提交章节初稿",
+        description: resolvedLanguage !== "zh"
           ? "Submit the complete chapter title and prose."
           : "提交完整的章节标题和正文。",
         parameters: ChapterDraftToolSchema,
@@ -255,7 +255,7 @@ export class WriterAgent extends BaseAgent {
       content: input.content,
       wordCount: countChapterLength(
         input.content,
-        resolvedLanguage === "en" ? "en_words" : "zh_chars",
+        resolvedLanguage !== "zh" ? "en_words" : "zh_chars",
       ),
       postSettlement: settlement.postSettlement,
       runtimeStateDelta: runtimeStateArtifacts?.resolvedDelta ?? settlement.runtimeStateDelta,
@@ -272,7 +272,7 @@ export class WriterAgent extends BaseAgent {
     readonly book: BookConfig;
     readonly bookDir: string;
     readonly bookRules: BookRules | null;
-    readonly language: "zh" | "en";
+    readonly language: "zh" | "en" | "ko";
     readonly chapterNumber: number;
     readonly title: string;
     readonly content: string;
@@ -364,7 +364,7 @@ export class WriterAgent extends BaseAgent {
   async saveChapter(
     bookDir: string,
     output: WriteChapterOutput,
-    language: "zh" | "en" = "zh",
+    language: "zh" | "en" | "ko" = "zh",
     chapterIndex?: ReadonlyArray<ChapterMeta>,
   ): Promise<void> {
     const chaptersDir = join(bookDir, "chapters");
@@ -457,7 +457,7 @@ export class WriterAgent extends BaseAgent {
     readonly contextPackage: ContextPackage;
     readonly externalContext?: string;
     readonly lengthSpec: LengthSpec;
-    readonly language?: "zh" | "en";
+    readonly language?: "zh" | "en" | "ko";
   }): string {
     const language = params.language ?? "zh";
     // The user's steering docs (author_intent = long-term direction, current_focus =
@@ -472,7 +472,7 @@ export class WriterAgent extends BaseAgent {
     );
     const contextSections = renderNarrativeSelectedContext(otherEntries, language);
     const userDirectionBlock = directionEntries.length > 0
-      ? (language === "en"
+      ? (language !== "zh"
           ? `## User direction (overrides model defaults — must follow)\n${renderNarrativeSelectedContext(directionEntries, language)}\n`
           : `## 用户方向（优先于模型默认，必须遵循）\n${renderNarrativeSelectedContext(directionEntries, language)}\n`)
       : "";
@@ -481,7 +481,7 @@ export class WriterAgent extends BaseAgent {
     const chapterContextBlock = this.buildChapterContextBlock(params.externalContext, language);
     const briefNarrative = renderMemoAsNarrativeBlock(params.chapterMemo, params.chapterIntentData, language);
 
-    if (params.language === "en") {
+    if (params.language !== "zh") {
       return `Write chapter ${params.chapterNumber}.
 
 ${chapterContextBlock}
@@ -510,10 +510,10 @@ ${lengthRequirementBlock}
 - 通过章节初稿结果工具提交完整标题和正文。`;
   }
 
-  private buildChapterContextBlock(externalContext: string | undefined, language: "zh" | "en"): string {
+  private buildChapterContextBlock(externalContext: string | undefined, language: "zh" | "en" | "ko"): string {
     const trimmed = externalContext?.trim();
     if (!trimmed) return "";
-    if (language === "en") {
+    if (language !== "zh") {
       return `## Per-chapter user instruction (highest priority)
 ${trimmed}
 
@@ -528,12 +528,12 @@ ${trimmed}
   private buildSettlerGovernedControlBlock(
     chapterIntent: string,
     contextPackage: ContextPackage,
-    language: "zh" | "en",
+    language: "zh" | "en" | "ko",
   ): string {
     const selectedContext = renderNarrativeSelectedContext(contextPackage.selectedContext, language)
       .replace(/^### /gm, "- ");
 
-    if (language === "en") {
+    if (language !== "zh") {
       return `\n## Chapter Control Inputs
 ${chapterIntent}
 
@@ -548,12 +548,12 @@ ${chapterIntent}
 ${selectedContext || "- none"}\n`;
   }
 
-  private buildLengthRequirementBlock(lengthSpec: LengthSpec, language: "zh" | "en"): string {
+  private buildLengthRequirementBlock(lengthSpec: LengthSpec, language: "zh" | "en" | "ko"): string {
     const bounds=[
       ...(lengthSpec.minChapterLength!==undefined?[`Minimum: ${lengthSpec.minChapterLength}`]:[]),
       ...(lengthSpec.maxChapterLength!==undefined?[`Maximum: ${lengthSpec.maxChapterLength}`]:[]),
     ];
-    if (language === "en") {
+    if (language !== "zh") {
       return `Requirements:
 - User target length: ${lengthSpec.target} words
 - ${bounds.join("; ") || "No additional hard range specified."} (words)
@@ -628,7 +628,7 @@ ${selectedContext || "- none"}\n`;
   private async buildRuntimeStateArtifactsIfPresent(
     bookDir: string,
     delta: RuntimeStateDelta,
-    language: "zh" | "en",
+    language: "zh" | "en" | "ko",
     authoritativeChapterNumber?: number,
     allowReapply?: boolean,
     baselineChapter?: number,
@@ -663,7 +663,7 @@ ${selectedContext || "- none"}\n`;
   private async resolveRuntimeStateArtifactsForOutput(
     bookDir: string,
     output: WriteChapterOutput,
-    language: "zh" | "en",
+    language: "zh" | "en" | "ko",
   ): Promise<RuntimeStateArtifacts> {
     const safeDelta = this.normalizeRuntimeStateDeltaChapter(
       output.runtimeStateDelta,

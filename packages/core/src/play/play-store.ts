@@ -36,7 +36,7 @@ const PlayWorldSchema = z.object({
   visualContract: z.string(),
   mode: z.enum(["open", "guided"]),
   choiceCount:z.number().int().positive().optional(),
-  language: z.enum(["zh", "en"]),
+  language: z.enum(["zh", "en", "ko"]),
   createdAt: z.string().min(1),
   updatedAt: z.string().min(1),
 }).strict();

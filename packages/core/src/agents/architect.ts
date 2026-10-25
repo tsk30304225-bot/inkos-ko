@@ -58,14 +58,14 @@ export class ArchitectAgent extends BaseAgent {
       ? this.buildRevisePrompt(options.reviseFrom)
       : "";
 
-    const systemPrompt = resolvedLanguage === "en"
+    const systemPrompt = resolvedLanguage !== "zh"
       ? this.buildEnglishFoundationPrompt(book, contextBlock, reviewFeedbackBlock)
       : this.buildChineseFoundationPrompt(book, contextBlock, reviewFeedbackBlock);
 
-    const langPrefix = resolvedLanguage === "en"
+    const langPrefix = resolvedLanguage === "ko" ? "설정의 내용·인물명·지명·설명은 한국어로 작성한다. 기술용 키·태그·파서용 제목은 원래 계약을 유지한다.\n\n" : resolvedLanguage !== "zh"
       ? "【LANGUAGE OVERRIDE】All submitted foundation content, character names, place names, and prose must be in English.\n\n"
       : "";
-    const userMessage = resolvedLanguage === "en"
+    const userMessage = resolvedLanguage === "ko" ? `제목이 "${book.title}"인 작품의 전체 기초 설정을 한국어로 작성하라. 각 설정 항목의 목적·맥락·기준·경계를 분명히 하고 지정 출력 계약을 지켜라.` : resolvedLanguage !== "zh"
       ? `Generate the complete foundation for the ${book.genre} Work titled "${book.title}". Write everything in English.`
       : `请为标题为"${book.title}"的${book.genre}作品生成完整基础设定。`;
 
@@ -129,20 +129,20 @@ ${reviseFrom.userFeedback || "（无）"}
     readonly book: BookConfig;
     readonly contextBlock: string;
     readonly reviewFeedbackBlock: string;
-    readonly language: "zh" | "en";
+    readonly language: "zh" | "en" | "ko";
   }): string {
     const { book, contextBlock, reviewFeedbackBlock, language } = params;
-    const metadata = language === "en"
+    const metadata = language !== "zh"
       ? `Platform: ${book.platform}\nGenre: ${book.genre}\nTarget chapters: ${book.targetChapters}\nChapter length: ${book.chapterWordCount}\nTitle: ${book.title}`
       : `平台：${book.platform}\n题材：${book.genre}\n目标章数：${book.targetChapters}\n每章字数：${book.chapterWordCount}\n标题：${book.title}`;
-    return language === "en"
+    return language !== "zh"
       ? `Create the Work foundation using the activated professional Skills and supplied authority.${contextBlock}${reviewFeedbackBlock}\n\n## Work metadata\n${metadata}\n\nSubmit readable foundation artifacts and the small structured rules surface through the required tools.`
       : `按已激活的专业 Skill 和输入权威生成作品基础设定。${contextBlock}${reviewFeedbackBlock}\n\n## 作品元信息\n${metadata}\n\n通过指定工具提交可读基础资产和少量结构化规则。`;
   }
   async writeFoundationFiles(
     bookDir: string,
     output: ArchitectOutput,
-    language: "zh" | "en",
+    language: "zh" | "en" | "ko",
     mode: "init" | "revise" = "init",
   ): Promise<void> {
     const writes: AtomicFileWrite[] = [
@@ -196,14 +196,14 @@ ${reviseFrom.userFeedback || "（无）"}
     const reviewFeedbackBlock = this.buildReviewFeedbackBlock(reviewFeedback, resolvedLanguage);
 
     const contextBlock = externalContext
-      ? (resolvedLanguage === "en"
+      ? (resolvedLanguage !== "zh"
           ? `\n\n## External Instructions\n${externalContext}\n`
           : `\n\n## 外部指令\n${externalContext}\n`)
       : "";
 
     const isSeries = options?.importMode === "series";
 
-    const continuationDirective = resolvedLanguage === "en"
+    const continuationDirective = resolvedLanguage !== "zh"
       ? `## Import mode\n${isSeries ? "series" : "continuation"}`
       : `## 导入模式\n${isSeries ? "系列新作" : "原线续写"}`;
 
@@ -212,11 +212,11 @@ ${reviseFrom.userFeedback || "（无）"}
       contextBlock,
       reviewFeedbackBlock,
       language: resolvedLanguage,
-    }) + (resolvedLanguage === "en"
-      ? `\n\n${continuationDirective}\nDerive established facts from the source package. Explicit continuation instructions control future plot and ending. Never infer a mandatory future event from tone or a mystery alone; keep unprescribed futures open. A compressed package is evidence, not permission to invent missing canon. ALL output MUST be written in English.`
+    }) + (resolvedLanguage !== "zh"
+      ? `\n\n${continuationDirective}\nDerive established facts from the source package. Explicit continuation instructions control future plot and ending. Never infer a mandatory future event from tone or a mystery alone; keep unprescribed futures open. A compressed package is evidence, not permission to invent missing canon. ALL output MUST be written in ${resolvedLanguage === "ko" ? "Korean" : "English"}.`
       : `\n\n${continuationDirective}\n既成事实从资料包推导；未来剧情和结局服从明确的续写指令。不能仅凭文风或悬念推导必须发生的未来事件，未指定的发展保留开放。压缩资料包是证据，不是臆造缺失正典的许可。`);
 
-    const userMessage = resolvedLanguage === "en"
+    const userMessage = resolvedLanguage === "ko" ? `제목이 "${book.title}"인 기존 원문에서 기초 설정을 추출하라. 관측된 정사와 미정인 미래를 구별하고 한국어로 작성하라.\n\n${chaptersText}` : resolvedLanguage !== "zh"
       ? `Generate the complete foundation for the imported ${book.genre} Work titled "${book.title}". Write everything in English.\n\n${chaptersText}`
       : `以下是《${book.title}》的已有正文资料包，请从中反向推导完整基础设定：\n\n${chaptersText}`;
 
@@ -240,7 +240,7 @@ ${reviseFrom.userFeedback || "（无）"}
     const resolvedLanguage = book.language;
     const reviewFeedbackBlock = this.buildReviewFeedbackBlock(reviewFeedback, resolvedLanguage);
 
-    const canonBlock = resolvedLanguage === "en"
+    const canonBlock = resolvedLanguage !== "zh"
       ? `\n\n## Fanfic mode: ${fanficMode}\n\n## Source canon\n${fanficCanon}`
       : `\n\n## 同人模式：${fanficMode}\n\n## 原作正典\n${fanficCanon}`;
     const systemPrompt = this.buildFoundationProtocol({
@@ -262,7 +262,7 @@ ${reviseFrom.userFeedback || "（无）"}
   private async generateFoundationInStages(input: {
     readonly systemPrompt: string;
     readonly userMessage: string;
-    readonly language: "zh" | "en";
+    readonly language: "zh" | "en" | "ko";
     readonly temperature: number;
     readonly onOutline?: (outline: { readonly storyFrame: string; readonly volumeMap: string }) => void | Promise<void>;
   }): Promise<ArchitectOutput> {
@@ -273,8 +273,8 @@ ${reviseFrom.userFeedback || "（无）"}
       ],
       {
         name: "submit_foundation_outline",
-        label: input.language === "en" ? "Submit foundation outline" : "提交基础框架",
-        description: input.language === "en"
+        label: input.language !== "zh" ? "Submit foundation outline" : "提交基础框架",
+        description: input.language !== "zh"
           ? "Submit the readable story frame and volume map."
           : "提交可读的故事框架与卷纲。",
         parameters: FoundationOutlineToolSchema,
@@ -285,7 +285,7 @@ ${reviseFrom.userFeedback || "（无）"}
       storyFrame: outline.storyFrame.trim(),
       volumeMap: outline.volumeMap.trim(),
     });
-    const detailsPrompt = input.language === "en"
+    const detailsPrompt = input.language !== "zh"
       ? `${input.userMessage}\n\n<story_frame>\n${outline.storyFrame}\n</story_frame>\n\n<volume_map>\n${outline.volumeMap}\n</volume_map>\n\nComplete the readable book rules, structured rule data, and initial unresolved hooks.`
       : `${input.userMessage}\n\n<story_frame>\n${outline.storyFrame}\n</story_frame>\n\n<volume_map>\n${outline.volumeMap}\n</volume_map>\n\n继续完成可读本书规则、结构化规则数据和初始未解伏笔。`;
     const { result: details } = await this.submitStructured(
@@ -295,8 +295,8 @@ ${reviseFrom.userFeedback || "（无）"}
       ],
       {
         name: "submit_foundation_details",
-        label: input.language === "en" ? "Submit foundation details" : "提交基础详情",
-        description: input.language === "en"
+        label: input.language !== "zh" ? "Submit foundation details" : "提交基础详情",
+        description: input.language !== "zh"
           ? "Submit book rules and initial unresolved hooks. Arrays and objects must be native tool arguments, never JSON strings."
           : "提交本书规则与初始未解伏笔。数组和对象必须是工具参数的原生类型，不要放入字符串。",
         parameters: FoundationDetailsToolSchema,
@@ -344,12 +344,12 @@ ${reviseFrom.userFeedback || "（无）"}
   }
   private buildReviewFeedbackBlock(
     reviewFeedback: string | undefined,
-    language: "zh" | "en",
+    language: "zh" | "en" | "ko",
   ): string {
     const trimmed = reviewFeedback?.trim();
     if (!trimmed) return "";
 
-    if (language === "en") {
+    if (language !== "zh") {
       return `\n\n## Previous Review Feedback
 Apply the following requested changes to the foundation instead of paraphrasing the same design:
 

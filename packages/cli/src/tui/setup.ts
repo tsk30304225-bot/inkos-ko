@@ -267,7 +267,7 @@ async function autoInit(cwd: string): Promise<void> {
   const config = {
     name: projectName,
     version: "0.1.0",
-    language: "zh",
+    language: "ko",
     llm: {
       provider: process.env.INKOS_LLM_PROVIDER ?? "openai",
       baseUrl: process.env.INKOS_LLM_BASE_URL ?? "",

@@ -3,48 +3,31 @@ import { mkdir } from "node:fs/promises";
 import { resolve } from "node:path";
 import { log, logError } from "../utils.js";
 import { initializeProjectDirectory } from "../project-bootstrap.js";
+import { parseWritingLanguage, type WritingLanguage } from "../language-options.js";
 
 export const initCommand = new Command("init")
   .description("Initialize an InkOS project (current directory by default)")
   .argument("[name]", "Project name (creates subdirectory). Omit to init current directory.")
-  .option("--lang <language>", "Default writing language: zh (Chinese) or en (English)", "zh")
-  .action(async (name: string | undefined, opts: { lang?: string }) => {
+  .option("--lang <language>", "Writing language: ko (한국어), zh (Chinese), en (English)", parseWritingLanguage, "ko")
+  .action(async (name: string | undefined, opts: { lang: WritingLanguage }) => {
     const projectDir = name ? resolve(process.cwd(), name) : process.cwd();
-
     try {
       await mkdir(projectDir, { recursive: true });
-      await initializeProjectDirectory(projectDir, {
-        language: (opts.lang === "en" ? "en" : "zh"),
-        overwriteSupportFiles: true,
-      });
-
-      log(`Project initialized at ${projectDir}`);
-      log("");
-      const isEnglish = (opts.lang ?? "zh") === "en";
-      const exampleCreateLines = isEnglish
-        ? ["  inkos book create --title 'My Novel' --genre progression --platform royalroad --lang en"]
-        : [
-          "  inkos book create --title '我的小说' --genre xuanhuan --platform tomato",
-          "  # English project? Re-run with: inkos init --lang en",
-        ];
-      if (global) {
-        log("Global LLM config detected. Ready to go!");
-        log("");
-        log("Next steps:");
-        if (name) log(`  cd ${name}`);
-        for (const line of exampleCreateLines) log(line);
+      await initializeProjectDirectory(projectDir, { language: opts.lang, overwriteSupportFiles: true });
+      const ko = opts.lang === "ko";
+      log(ko ? `프로젝트를 초기화했습니다: ${projectDir}` : `Project initialized at ${projectDir}`);
+      log(ko ? "다음 단계:" : "Next steps:");
+      if (name) log(`  cd ${name}`);
+      if (ko) {
+        log("  inkos book create --title '새로운 이야기' --genre other --platform other --lang ko");
+      } else if (opts.lang === "en") {
+        log("  inkos book create --title 'My Novel' --genre progression --platform royalroad --lang en");
       } else {
-        log("Next steps:");
-        if (name) log(`  cd ${name}`);
-        log("  # Option 1: Set global config (recommended, one-time):");
-        log("  inkos config set-global --provider openai --base-url <your-api-url> --api-key <your-key> --model <your-model>");
-        log("  # Option 2: Edit .env for this project only");
-        log("");
-        for (const line of exampleCreateLines) log(line);
+        log("  inkos book create --title '我的小说' --genre xuanhuan --platform tomato --lang zh");
       }
       log("  inkos write next <book-id>");
-    } catch (e) {
-      logError(`Failed to initialize project: ${e}`);
+    } catch (error) {
+      logError(opts.lang === "ko" ? `프로젝트 초기화 실패: ${error}` : `Failed to initialize project: ${error}`);
       process.exit(1);
     }
   });

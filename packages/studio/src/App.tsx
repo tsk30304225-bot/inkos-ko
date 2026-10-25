@@ -198,6 +198,11 @@ export function App() {
           <div className="flex items-center gap-3">
             <div className="flex gap-0.5 bg-muted/50 rounded-lg p-0.5">
               <button
+                aria-label="한국어"
+                onClick={async () => { await putApi("/project", { language: "ko" }); refetchProject(); }}
+                className={`px-2.5 py-1 text-[16px] font-medium rounded-md ${currentLang === "ko" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
+              >한국어</button>
+              <button
                 onClick={async () => {
                   await putApi("/project", { language: "zh" });
                   refetchProject();

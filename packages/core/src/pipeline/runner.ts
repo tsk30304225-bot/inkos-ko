@@ -83,10 +83,10 @@ function mergeChapterRevisionInstructions(
 export function buildSpinoffFoundationContext(
   parentCanon: string,
   direction: string | undefined,
-  language: "zh" | "en",
+  language: "zh" | "en" | "ko",
 ): string {
   const dir = direction?.trim();
-  if (language === "en") {
+  if (language !== "zh") {
     return [
       "## This is a SIDE-STORY (番外)",
       dir ? `\n## Side-story direction\n${dir}` : "",
@@ -251,7 +251,7 @@ export class PipelineRunner {
   }
 
   private localize(language: LengthLanguage, messages: { zh: string; en: string }): string {
-    return language === "en" ? messages.en : messages.zh;
+    return language !== "zh" ? messages.en : messages.zh;
   }
 
   private async resolveBookLanguage(
@@ -270,7 +270,7 @@ export class PipelineRunner {
   }
 
   private languageFromLengthSpec(lengthSpec: Pick<LengthSpec, "countingMode">): LengthLanguage {
-    return lengthSpec.countingMode === "en_words" ? "en" : "zh";
+    return lengthSpec.countingMode === "ko_chars" ? "ko" : lengthSpec.countingMode === "en_words" ? "en" : "zh";
   }
 
   private logStage(language: LengthLanguage, message: { zh: string; en: string }): void {
@@ -916,7 +916,7 @@ export class PipelineRunner {
         || mode === "rewrite"
         || mode === "rework";
       const preRevision = explicitRevisionRequested
-        ? { observations: [], summary: language === "en" ? "User-directed revision" : "用户定向修订" }
+        ? { observations: [], summary: language !== "zh" ? "User-directed revision" : "用户定向修订" }
         : await this.collectReviewObservations({
             auditor,
             book,
@@ -1086,7 +1086,7 @@ export class PipelineRunner {
       if (changed) await archiveChapterVersion(bookDir, targetChapter, content, "revision");
       const reviseLang = book.language;
 
-      const downstreamRevisionNotice = language === "en"
+      const downstreamRevisionNotice = language !== "zh"
         ? `Chapter ${targetChapter} changed; re-review this downstream chapter for continuity.`
         : `第${targetChapter}章已重写，请重新检查本章与前文的连续性。`;
       const updatedIndex = index.map((ch) => {
@@ -1971,7 +1971,7 @@ export class PipelineRunner {
   }
 
   private buildImportReplayStateSeed(language: LengthLanguage): string {
-    if (language === "en") {
+    if (language !== "zh") {
       return [
         "# Current State",
         "",
@@ -2005,7 +2005,7 @@ export class PipelineRunner {
   }
 
   private buildImportReplayHooksSeed(language: LengthLanguage): string {
-    if (language === "en") {
+    if (language !== "zh") {
       return [
         "# Pending Hooks",
         "",
