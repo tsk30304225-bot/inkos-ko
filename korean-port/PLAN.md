@@ -180,3 +180,9 @@ names, scene order, or signature combinations" 원칙을 그대로 지킨다). �
 
 ## 진행 기록
 - 2026-10-25: 계획 작성. 코드 변경 없음.
+- 2026-10-25 (브랜치 `claude/eeum-n0rsol` — 클라우드 세션 지정 브랜치라 `ko/<단계>` 대신 사용): **0단계 완료.**
+  - `f21cfe8` 킥오프 파일(CLAUDE.md, korean-port/, tools/inkos-agent-bridge/) 추가. 브리지 자체 시험 28/28 통과.
+  - 기준선: 설치·빌드 통과. 클라우드 기본 환경의 `pnpm -r test`는 core 13개 실패(샌드박스 프록시가 127.0.0.1 요청을 403으로 막음, 코드 결함 아님).
+    프록시 변수를 뺀 `pnpm -r --no-bail test`는 **core 701 / studio 304 / cli 88 = 1,093 전부 통과**. 이후 "원본 테스트 통과"는 이 명령으로 잰다.
+  - `korean-port/SURVEY.md` 작성: 스킬 우선순위(실험 확인), 프로필·`explainer-script` 추가 지점, 장르 값, 언어 분기 전수(558줄/76파일 + 넓힌 검색 305줄/67파일), 기존 패치의 zh/en 기본값 변경 목록.
+  - 다음: 1단계. 시작 전 사용자 확인 필요 — 회당 분량 기준, zh/en에도 보이는 Studio 화면 변경 허용 여부(SURVEY.md 5절).
