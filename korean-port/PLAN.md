@@ -194,7 +194,7 @@ names, scene order, or signature combinations" 원칙을 그대로 지킨다). �
 - 화면 언어: 한국어·영어 선택. 화면 구성은 에이전트(Codex·Grok봇·Claude Code) 실행 기준, Studio 한국어화는 후순위. 사용자는 본인 1명. (2026-10-25 사용자 결정)
 - 영어·중국어 동작 유지 원칙은 그대로 둔다(원본 업데이트를 받을 때 충돌을 줄이고 원본 테스트를 기준선으로 쓰기 위해). 기존 패치의 zh/en 기본값 변경은 되돌리고, 한국어는 `--lang ko`/`inkos.json`의 `language: "ko"`로 선택한다.
 - 실행 환경: Claude Code(클라우드), Codex(클라우드), Grok봇. API 키 없이 브리지로만 실행. (2026-10-25 사용자 확인)
-- 작품 폴더 보관 방식(세션 간 원고 이어가기): **Google Drive**. 작품 프로젝트 전체를 tar.gz로 묶어 Drive 폴더 하나에 올리고 다음 세션에서 복원(`tools/novel-drive.py`). 인증은 각 실행 환경의 비밀값(OAuth refresh token, `drive.file` 범위). (2026-10-25 사용자 결정)
+- 원고 보관: 각 실행 환경의 Google Drive 연결로 폴더 "Inkos ko"(ID `1FYkA9t5AiI3u31cL0uM8dSFjgf5LxnEU`)에 작품 압축본을 올리고 받는다. `novel-drive.py`의 OAuth 동기화는 선택. (2026-10-25 사용자 결정)
 - 대상 장르·유형: 한국 라이트 무협, 판타지, 현대판타지, 드라마 대본, 설명형 영상 대본. (2026-10-25 사용자 결정)
 - 드라마 대본 기본 형식: **세로형 숏드라마**(작품마다 바꿀 수 있음, 미니시리즈형도 지원). (2026-10-25 사용자 결정)
 - 설명 영상 대본: 기본 길이 **롱폼(8~15분)**. 출력 형식은 스튜디오 스키마가 아직 없어 **장면 목록 Markdown 표**로 낸다. 스키마가 정해지면 같은 내용을 JSON으로도 내보낸다. (2026-10-25 사용자 결정)
@@ -297,3 +297,12 @@ names, scene order, or signature combinations" 원칙을 그대로 지킨다). �
   - 검증(프록시 변수 제거): core 748 / studio 307 / cli 94 = 1,149 통과(원본 1,093 포함), 브리지 33/33, Drive 24/24. 원본 수정 현재 79개 +778/−454.
   - 감독 확인 필요: 브리지 `AGENTS.md`의 "InkOS writes role cards to roles/主要角色 … Do not rename them by hand"는 이제 ko 작품에는 맞지 않는다(감독 문서라 고치지 않음).
     1.8 교훈의 "한국어 review 스킬에 등급을 낮추지 않는다를 넣는다"는 아직 반영하지 않았다(지시 범위 밖).
+- 2026-10-25 (`claude/eeum-n0rsol`): **5단계 준비 `(stage 5 prep)`.** 감독 승인: 0-a·4-1 보완. 결정필요 답변 4건과 원고 보관 지침(사용자 결정)을 한 커밋으로 반영.
+  - 브리지 `AGENTS.md` 인물 폴더 문장: zh/en `roles/主要角色`·`次要角色`, ko `roles/major`·`roles/minor`, 손으로 옮기지 않음.
+  - 한국어 review 스킬(`SKILL.md`, `review-matrix.md`): 해결되지 않은 문제의 등급을 수정 범위 밖이라는 이유로 낮추지 않는다.
+  - `CLAUDE.md`: 세션 지정 브랜치 하나, 단계는 커밋 제목(운영 규칙 v1.1과 같게).
+  - `novel-drive.py push` exit 3이면 `--force` 없이 멈추고 사용자에게 보고(`RUNTIME.md`, 브리지 `AGENTS.md`).
+  - 원고 보관 지침(모든 실행 환경): 각 환경의 Drive 연결로 "Inkos ko"(`1FYkA9t5AiI3u31cL0uM8dSFjgf5LxnEU`)에 압축본을 올리고 받는다. OAuth 동기화는 선택. 결정 사항 교체.
+    지침의 `pack <작품 폴더> <이름>.tar.gz`가 그대로 동작하도록 `pack`이 두 번째 인자로 압축본 이름을 받게 했고(시험 25/25),
+    "unpack 전에 사용자 확인"에 맞춰 `setup-cloud.sh`의 자동 복원은 `--pull`을 줄 때만 한다(기본 끔).
+  - 시험: 한국어 스킬 9/9, 브리지 33/33, Drive 25/25.

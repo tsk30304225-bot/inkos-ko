@@ -13,44 +13,56 @@ sh tools/setup-cloud.sh            # 기본 작품 프로젝트: <저장소>/nov
 
 1. Node 22.16 이상·python3 확인, pnpm이 없으면 설치, `pnpm install --frozen-lockfile && pnpm -r build`
 2. `~/.local/bin/inkos` 실행기 생성(빌드 결과 `packages/cli/dist/index.js`에는 실행 권한이 없어서 래퍼를 둔다)
-3. 작품 프로젝트가 없으면: Google Drive 비밀값이 있으면 최신 보관본을 내려받아 복원, 없으면 `inkos init --lang ko`
+3. 작품 프로젝트가 없으면 `inkos init --lang ko`(OAuth 비밀값을 넣고 `--pull`을 주면 최신 보관본을 복원 — 위 원고 보관 지침의 사용자 확인을 먼저 받을 것)
 4. 브리지 설치(`install.sh --project`), `~/.bashrc`에 `PATH`·`INKOS_BIN`·`INKOS_LOCALE=ko`·`INKOS_AGENT_PROJECT` 추가, `inkos-agent doctor`
 
 API 키나 외부 모델 주소는 설정하지 않는다. `doctor`가 `modelOverrides … bypasses the bridge`를 보고하면 실제 API로 나가는 설정이 있다는 뜻이므로 사용자에게 먼저 묻는다.
 
-작품 프로젝트가 저장소 안(`novel/`)에 있으면 스크립트가 `novel/.gitignore`에 `*`를 넣어 코드 저장소에 원고가 커밋되지 않게 한다. 원고 보관은 아래 Google Drive로 한다.
+작품 프로젝트가 저장소 안(`novel/`)에 있으면 스크립트가 `novel/.gitignore`에 `*`를 넣어 코드 저장소에 원고가 커밋되지 않게 한다. 원고 보관은 아래 원고 보관 지침을 따른다.
 
 ## 공통: 작업 순서 (에이전트용)
 
 ```sh
 inkos-agent start
 JOB=$(inkos-agent job start -- book create --title "제목" --genre light-martial --lang ko)
-inkos-agent wait --job $JOB --timeout 90     # exit 0: 요청 답하기, 3: 끝, 4: 다시 wait
+inkos-agent wait --job $JOB --timeout 90     # 브리지 1.2: 항상 exit 0, 첫 줄 EVENT: request(답하기) / job-finished(끝) / timeout(다시 wait)
 ```
 
 - 장르 기준이 있는 값: `light-martial`(라이트 무협), `fantasy`(판타지), `modern-fantasy`(현대판타지). 한국어 이름(무협, 현대판타지 등)도 알아본다.
 - 대본: `inkos script create …`(기본 세로형 숏드라마), 설명 영상: `inkos explainer create …`(기본 롱폼 8~15분, ko 프로젝트 전용).
 - 작품별 피로어 목록(선택): `works/<작품>/source/story/korean_fatigue_words.md`에 한 줄에 하나. 검수 때 빈도가 관찰로 붙는다.
 
-## 원고 보관: Google Drive (2026-10-25 사용자 결정)
+## 원고 보관 지침 (모든 실행 환경)
+- 작품 폴더와 원고는 공개 포크에 커밋하지 않는다.
+- 회차 하나를 끝낼 때마다, 그리고 세션 끝에:
+  python3 tools/novel-drive.py pack <작품 폴더> <작품ID>_<YYYYMMDD-HHMM>_<마지막 회차>화.tar.gz
+  → 이 환경의 Google Drive 연결로 "Inkos ko" 폴더에 올리고, 올린 파일 이름을 사용자에게 보고한다.
+- 압축본 업로드가 안 되면(크기 제한, 연결 오류 등): 회차 원고와 상태 파일만 텍스트로 올리거나, 사용자에게 파일로 넘긴다. 실패 사실을 보고에 적는다.
+- 세션 시작: "Inkos ko"에서 그 작품의 가장 최근 압축본을 받아 unpack하기 전에, 파일 이름과 마지막 회차를 사용자에게 보여주고 확인받는다.
+- 한 작품을 두 환경에서 동시에 작업하지 않는다.
 
-클라우드 컨테이너는 세션이 끝나면 사라지고, 작품 폴더는 git에 남지 않는다. `tools/novel-drive.py`가 작품 프로젝트 전체(설정·원고·상태·스냅샷·작업 기록)를
-tar.gz 하나로 묶어 Drive 폴더 하나에 올리고, 다음 세션에서 최신 보관본을 복원한다. `.env`와 브리지 `runtime/`은 묶지 않는다.
+"Inkos ko" 폴더 ID: `1FYkA9t5AiI3u31cL0uM8dSFjgf5LxnEU`. 각 실행 환경(Claude Code·Codex 클라우드, Grok봇)에는 각자 Google Drive 연결이 있다(2026-10-25 사용자 결정).
+`pack`은 작품 프로젝트 전체(설정·원고·상태·스냅샷·작업 기록)를 tar.gz 하나로 묶고, `.env`·브리지 `runtime/`·`.inkos-drive-base`는 넣지 않는다.
+받은 압축본은 `python3 tools/novel-drive.py unpack <압축본> <작품 폴더>`로 푼다(기존 프로젝트가 있으면 `--force`가 필요하다).
+
+## 선택: OAuth 직접 동기화 (`novel-drive.py push`/`pull`)
+
+Drive 연결 대신, 실행 환경의 비밀값으로 스크립트가 Drive API를 직접 부르는 방법이다. 선택 사항이며 기본 지침은 위의 Drive 연결이다.
 
 ```sh
-python3 tools/novel-drive.py push novel          # 세션 끝: 묶어서 올림(같은 작품의 최신 10개만 남기고 이전 것은 휴지통)
-python3 tools/novel-drive.py pull novel          # 세션 시작: 최신 보관본 복원(setup-cloud.sh가 자동으로 함)
+python3 tools/novel-drive.py push novel          # 묶어서 올림(같은 작품의 최신 10개만 남기고 이전 것은 휴지통)
+python3 tools/novel-drive.py pull novel          # 최신 보관본 복원 — 위 지침대로 먼저 사용자에게 확인
 python3 tools/novel-drive.py list                # 보관본 목록
 ```
 
 덮어쓰기 방지(2026-10-25 감독 지시): `pull`은 복원한 보관본 이름을 작품 폴더의 `.inkos-drive-base`에 기록한다.
 `push`는 Drive에 있는 같은 작품의 최신 보관본이 그 기록과 다르면(다른 세션이 그 사이에 올림) 거부하고 exit 3을 낸다.
-Drive에 이미 보관본이 있는데 이 사본이 Drive에서 복원된 것이 아니어도 거부한다. 확인한 뒤에만 `--force`로 올린다.
-작품 구분은 폴더 이름이 아니라 보관본 이름의 작품 키(`inkos-novel-<키>-<날짜-시각>.tar.gz`)로 한다. 기록 파일은 보관본에 넣지 않는다.
+Drive에 이미 보관본이 있는데 이 사본이 Drive에서 복원된 것이 아니어도 거부한다.
+**`novel-drive.py push`가 exit 3(덮어쓰기 방지 거부)을 내면 `--force`를 쓰지 말고 멈춰서 사용자에게 보고한다.**
+작품 구분은 폴더 이름이 아니라 보관본 이름의 작품 키(`inkos-novel-<키>-<날짜-시각>.tar.gz`)로 한다.
+OAuth 방식은 `drive.file` 범위라 도구가 만든 폴더(`init-folder`)만 쓸 수 있고, 위의 "Inkos ko" 폴더와는 별개다.
 
-**에이전트는 세션을 끝내기 전에 반드시 `push`를 실행하고 결과(올린 파일 이름)를 사용자에게 알린다.** 실패하면 원고가 사라질 수 있다는 점도 알린다.
-
-### 처음 한 번: Drive 인증 준비 (사용자가 직접)
+### OAuth를 쓸 때 처음 한 번: 인증 준비 (사용자가 직접)
 
 비밀값은 대화창에 붙여 넣지 않는다. 각 실행 환경의 **비밀값(Secrets)/환경 변수 설정**에 넣는다.
 
@@ -67,15 +79,12 @@ Drive에 이미 보관본이 있는데 이 사본이 Drive에서 복원된 것�
 Drive API 주소는 `oauth2.googleapis.com`, `www.googleapis.com`이다. 네트워크가 제한된 환경이면 이 두 호스트를 허용 목록에 넣는다
 (2026-10-25 Claude Code 클라우드에서 두 호스트 접속 확인: 인증 없이 401/404 응답 = 연결은 됨).
 
-비밀값을 넣기 어려운 환경에서는 Claude Code의 Google Drive 커넥터로 작은 파일(예: `export`한 원고 Markdown)을 올릴 수는 있다.
-다만 커넥터는 파일 내용을 도구 호출에 그대로 실어 보내므로, 작품 폴더 전체를 매 세션 올리는 용도에는 맞지 않는다.
-
 ## Claude Code 클라우드
 
-- 환경 설정의 **Setup script**에 `sh tools/setup-cloud.sh`를 넣는다. Drive 비밀값 4개(`INKOS_GDRIVE_*`)를 환경의 비밀값/환경 변수로 넣는다.
+- 환경 설정의 **Setup script**에 `sh tools/setup-cloud.sh`를 넣는다. 원고 보관은 이 세션의 Google Drive 연결(커넥터)로 한다. OAuth 동기화를 쓸 때만 `INKOS_GDRIVE_*` 비밀값을 넣는다.
 - 집필·검수는 `.claude/agents`의 `inkos-writer`·`inkos-reviewer` 서브에이전트를 쓴다(검수는 집필한 서브에이전트와 다른 서브에이전트가 맡는다).
 - `inkos-agent wait`는 일반 Bash 호출(`--timeout 90`)로 반복한다. 작업 자체는 `job start`로 이미 백그라운드에서 돈다.
-- 세션이 오래 쉬면 컨테이너가 회수되어 진행 중인 작업과 브리지 요청이 사라진다. 긴 작업 중에도 회차가 끝날 때마다 `novel-drive.py push`를 하는 편이 안전하다.
+- 세션이 오래 쉬면 컨테이너가 회수되어 진행 중인 작업과 브리지 요청이 사라진다. 그래서 원고 보관 지침대로 회차가 끝날 때마다 압축본을 Drive에 올린다.
 - 작품 폴더를 `<저장소>/novel`에 두면 Claude 앱에서 원고 파일을 열어 볼 수 있다.
 
 ## Codex 클라우드

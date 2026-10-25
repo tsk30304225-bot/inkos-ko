@@ -11,7 +11,7 @@ settings - never from the command line or chat:
   INKOS_GDRIVE_CLIENT_ID, INKOS_GDRIVE_CLIENT_SECRET, INKOS_GDRIVE_REFRESH_TOKEN
   INKOS_GDRIVE_FOLDER_ID   (the Drive folder that holds the archives)
 
-  novel-drive.py pack  <project> [-o out.tar.gz]
+  novel-drive.py pack  <project> [out.tar.gz | -o out.tar.gz]
   novel-drive.py unpack <archive> <dest>
   novel-drive.py push  <project> [--keep 10]
   novel-drive.py pull  <dest> [--name ARCHIVE_NAME] [--force]
@@ -189,7 +189,7 @@ def project_key(project: Path) -> str:
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = parser.add_subparsers(dest="command", required=True)
-    p = sub.add_parser("pack"); p.add_argument("project"); p.add_argument("-o", "--output")
+    p = sub.add_parser("pack"); p.add_argument("project"); p.add_argument("archive", nargs="?"); p.add_argument("-o", "--output")
     p = sub.add_parser("unpack"); p.add_argument("archive"); p.add_argument("dest"); p.add_argument("--force", action="store_true")
     p = sub.add_parser("push"); p.add_argument("project"); p.add_argument("--keep", type=int, default=10)
     p.add_argument("--force", action="store_true", help="push even if Drive's newest archive is not this copy's base")
@@ -202,7 +202,7 @@ def main(argv: list[str] | None = None) -> None:
     if args.command == "pack":
         project = Path(args.project)
         data = pack_bytes(project)
-        out = Path(args.output or archive_name(project_key(project)))
+        out = Path(args.output or args.archive or archive_name(project_key(project)))
         out.write_bytes(data)
         print(f"packed {project} -> {out} ({len(data)} bytes)")
     elif args.command == "unpack":

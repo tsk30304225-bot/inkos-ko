@@ -2,12 +2,13 @@
 # One-shot setup for the Korean InkOS fork in an agent session
 # (Claude Code cloud, Codex cloud, or a local machine used by Grok).
 #
-#   sh tools/setup-cloud.sh [--project DIR] [--no-build] [--no-pull]
+#   sh tools/setup-cloud.sh [--project DIR] [--no-build] [--pull]
 #
 # 1. checks Node 22.16+, installs pnpm if needed, builds the fork
 # 2. puts an `inkos` launcher on PATH (~/.local/bin)
-# 3. restores the novel project from Google Drive when INKOS_GDRIVE_* secrets
-#    are set (tools/novel-drive.py pull), otherwise runs `inkos init --lang ko`
+# 3. creates the novel project with `inkos init --lang ko` when it is missing.
+#    With --pull and INKOS_GDRIVE_* secrets it restores the newest OAuth archive
+#    instead; the storage policy asks for the user's confirmation first.
 # 4. installs the agent bridge into the project and runs `inkos-agent doctor`
 #
 # No model API key or remote model endpoint is configured; the session answers
@@ -15,11 +16,12 @@
 set -eu
 REPO=$(cd "$(dirname "$0")/.." && pwd)
 PROJECT="${INKOS_AGENT_PROJECT:-$REPO/novel}"
-BUILD=1; PULL=1
+BUILD=1; PULL=0
 while [ $# -gt 0 ]; do
   case $1 in
     --project) PROJECT=$2; shift 2 ;;
     --no-build) BUILD=0; shift ;;
+    --pull) PULL=1; shift ;;
     --no-pull) PULL=0; shift ;;
     *) echo "unknown option $1" >&2; exit 2 ;;
   esac

@@ -125,8 +125,9 @@ The main session coordinates; subagents answer requests.
   Install one Node version with one tool. Two overlapping installs broke npm's own
   files once (`Class extends value undefined` during a build). Check `node -v` and
   `npm -v` before building.
-- InkOS writes role cards to `roles/主要角色` and `roles/次要角色` (engine default; it
-  also reads `roles/major` and `roles/minor`). Do not rename them by hand.
+- Role card folders: zh/en works use `roles/主要角色`·`roles/次要角色`; Korean (ko)
+  works in the Korean fork use `roles/major`·`roles/minor`. The engine reads all four.
+  Do not move cards by hand.
 
 ## Korean projects
 
@@ -136,7 +137,18 @@ limits; keep confirmed canon, plans and undecided author choices separate. For
 light martial fiction see `현대한국-라이트무협-기준.md`; do not force
 reincarnation, a fixed cultivation ladder, or a Korean historical setting.
 
-In the Korean fork, novel projects live only in the container. Before ending a
-cloud session run `python3 tools/novel-drive.py push <project>` from the fork
-repository and report the uploaded archive name (or the failure) to the user;
-see `korean-port/RUNTIME.md`.
+In the Korean fork, novel projects live only in the container. Follow this policy
+(also in `korean-port/RUNTIME.md`):
+
+## 원고 보관 지침 (모든 실행 환경)
+- 작품 폴더와 원고는 공개 포크에 커밋하지 않는다.
+- 회차 하나를 끝낼 때마다, 그리고 세션 끝에:
+  python3 tools/novel-drive.py pack <작품 폴더> <작품ID>_<YYYYMMDD-HHMM>_<마지막 회차>화.tar.gz
+  → 이 환경의 Google Drive 연결로 "Inkos ko" 폴더에 올리고, 올린 파일 이름을 사용자에게 보고한다.
+- 압축본 업로드가 안 되면(크기 제한, 연결 오류 등): 회차 원고와 상태 파일만 텍스트로 올리거나, 사용자에게 파일로 넘긴다. 실패 사실을 보고에 적는다.
+- 세션 시작: "Inkos ko"에서 그 작품의 가장 최근 압축본을 받아 unpack하기 전에, 파일 이름과 마지막 회차를 사용자에게 보여주고 확인받는다.
+- 한 작품을 두 환경에서 동시에 작업하지 않는다.
+
+"Inkos ko" folder ID: `1FYkA9t5AiI3u31cL0uM8dSFjgf5LxnEU`. The OAuth `novel-drive.py push`/`pull`
+sync is optional. If `push` exits 3 (overwrite protection), do not use `--force`;
+stop and report to the user.
