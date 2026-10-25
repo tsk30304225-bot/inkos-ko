@@ -191,3 +191,14 @@ names, scene order, or signature combinations" 원칙을 그대로 지킨다). �
     프록시 변수를 뺀 `pnpm -r --no-bail test`는 **core 701 / studio 304 / cli 88 = 1,093 전부 통과**. 이후 "원본 테스트 통과"는 이 명령으로 잰다.
   - `korean-port/SURVEY.md` 작성: 스킬 우선순위(실험 확인), 프로필·`explainer-script` 추가 지점, 장르 값, 언어 분기 전수(558줄/76파일 + 넓힌 검색 305줄/67파일), 기존 패치의 zh/en 기본값 변경 목록.
   - 다음: 1단계. 시작 전 사용자 확인 필요 — 회당 분량 기준, zh/en에도 보이는 Studio 화면 변경 허용 여부(SURVEY.md 5절).
+- 2026-10-25 (`claude/eeum-n0rsol`): **1단계 완료.** 사용자 결정 반영(분량 공백 제외 3,000자·프리셋 없음, 화면 ko/en·에이전트 기준).
+  - `c4a6684` 기존 패치를 그대로 적용(검토용 분리 커밋). 적용 직후 core 710 / studio 307 / cli 93 통과.
+  - `ffba2a1` 패치가 바꾼 zh/en 기본값 복원: `init`/`short-fiction --lang` 기본 zh, `agent`·`interact`·`project-bootstrap`·TUI autoInit·Studio 새 프로젝트 zh,
+    로캘 최종 기본 zh(`INKOS_LOCALE=ko` 또는 `LANG=ko_*`면 ko), `book create --platform` 기본 tomato(ko 작품은 other), `init`·`export`의 zh/en 출력 원본 그대로.
+  - `e80db04` 명시적 ko 분기: 분량 계수(writer가 ko를 en_words로 세던 문제), 분량 지시 단위 ko_chars, 상태 검증 응답 언어, 메인 에이전트 한국어 응답 지시,
+    회차 제목 엄격 인식("3장의 편지"·"2화 만에" 오탐 제거)과 `# 제N화 제목` 통일, 작품 ID는 원본 규칙 + 한글 음절만 추가(zh/en ID 불변),
+    상태 파일(복선 목록·회차 요약·현재 상태) 한국어 표제, 단편 ko 기본 1,000자(패치는 650), ko가 중국어 프롬프트로 가던 곳(architect 인물 카드, runner 의도문 등).
+  - 검증(프록시 변수 제거): **core 719 / studio 307 / cli 94 = 1,120 전부 통과**(원본 1,093 포함). 새 테스트 `packages/core/src/__tests__/korean-stage1.test.ts` 9개.
+  - 남은 것(범위 밖이거나 후속 단계): Studio 화면·영감 카드(ko→중국어 프롬프트, 사용자 결정으로 후순위), TUI 문구, 플레이/인터랙티브 필름/예측(대상 장르 밖),
+    대본 spec 파일 제목(2-2단계), 동인 정사 표제·단편 검토 보고서 표제(영어로 저장), 번역 EPUB `lang`(언어 이름이 들어감), 프롤로그·에필로그·외전 제목 인식.
+  - 다음: 2단계(한국어 스킬). 권장 연결 방식은 SURVEY.md 2절 C안(프로젝트 `language: ko`면 로더가 `skills-ko/` 삽입).
