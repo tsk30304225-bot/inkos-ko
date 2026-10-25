@@ -385,4 +385,4 @@ H08 deferred → progressing(최근 진전 3), 나머지 복선 그대로. 분�
 
 3화 감사: 막는 문제 없음. `state-fact-stale-wording`(보통, 1화 수정 뒤 남은 상태 문구) 그대로, 경미 5건(낫 판매 수 공백, 앞선 질문, 싸움 횟수, 중복 박자, 1화 문구 반복).
 "한국어 문장 점검" 블록에 `cross-chapter-repetition` 3건 → reviewer가 2건(69·141행)은 경미로 남기고, 41행 낙관 묘사는 진품 확인 장면이라 의도된 반복으로 보고 뺐다.
-reviewer 보고: 이번 감사 요청에는 `inkos-story-review` 스킬 블록이 없었다(1·2화 감사 때와 다름 — 원인 미조사). 상태 검증 `false`. CLI·로그 중국어 줄 0.
+reviewer 보고: 감사 요청에 `inkos-story-review` 스킬 블록이 없었다. 저장한 감사 프롬프트를 다시 세어 보면 5-a 1차·재실행 1·2화와 5-b 판타지 1화 감사에도 모두 `inkos-long-writing` 하나뿐이다(회차 파이프라인의 원본 동작). 한국어 검수 기준(`review-matrix.md`)은 회차 감사에 들어가지 않고, 한국어 문장 기준은 long-writing의 `korean-prose.md`로 들어간다. 상태 검증 `false`. CLI·로그 중국어 줄 0.
