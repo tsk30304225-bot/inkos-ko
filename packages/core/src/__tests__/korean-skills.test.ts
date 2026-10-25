@@ -105,6 +105,23 @@ describe("Korean skill layer", () => {
     }
   });
 
+  it("adds the Korean review skill to ko chapter audits and revisions only", async () => {
+    const client = { defaults: { maxTokens: 4096 } } as unknown as Parameters<typeof prepareWorkerMessages>[0]["client"];
+    for (const [language, korean] of [["ko", true], ["en", false], ["zh", false]] as const) {
+      const root = await projectWith(language);
+      try {
+        await saveWorkManifest(root, createWorkManifest({ id: "work", title: "work", profileId: "longform-novel", language }));
+        for (const [worker, review] of [["continuity-auditor", korean], ["reviser", korean], ["writer", false], ["state-validator", false]] as const) {
+          const messages = await prepareWorkerMessages({ client, projectRoot: root, bookId: "work" }, [{ role: "user", content: "audit chapter 3" }], 4096, worker);
+          const prompt = messages.map((message) => message.content).join("\n");
+          expect(prompt.includes("# 한국어 원고 검수"), `${language} ${worker}`).toBe(review);
+          expect(prompt.includes("# 검수 기준표"), `${language} ${worker} matrix`).toBe(review);
+          expect(prompt.includes("등급을 낮추지 않는다"), `${language} ${worker} severity`).toBe(review);
+        }
+      } finally { await rm(root, { recursive: true, force: true }); }
+    }
+  });
+
   it("maps genre values and Korean names to genre references", () => {
     expect(resolveKoreanGenre("light-martial")).toBe("light-martial");
     expect(resolveKoreanGenre("무협")).toBe("light-martial");

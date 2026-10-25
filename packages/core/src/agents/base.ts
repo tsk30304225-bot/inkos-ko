@@ -13,6 +13,7 @@ import type { Logger } from "../utils/logger.js";
 import { SourcedReviewIndexToolSchema, ArtifactReviewIndexToolSchema } from "./review-tool.js";
 import { resolveObservationSources } from "../models/observation.js";
 import { attachKoreanGenreReference } from "../skills/korean-genre-references.js";
+import { koreanReviewSkillIds } from "../skills/korean-review-skills.js";
 import {
   hydrateActivatedSkillGuidance,
   type ActivatedSkillGuidance,
@@ -132,10 +133,11 @@ export async function prepareWorkerMessages(
       ? createBuiltInWorkProfileRegistry(context.projectRoot).require(work.profileId)
       : scopedProfile ?? createBuiltInWorkProfileRegistry(context.projectRoot).require("workspace-default");
     let selectedSkills=context.activatedSkills;
-    const requiredIds=[...profile.requiredSkillIds,...requiredWorkSkillIds(work)];
+    const reviewIds=koreanReviewSkillIds(profile,work,workerId);
+    const requiredIds=[...profile.requiredSkillIds,...requiredWorkSkillIds(work),...reviewIds];
     if(professionalGuidance&&requiredIds.some(id=>!selectedSkills?.some(item=>item.skill.id===id))) {
       const available=await loadAvailableAgentSkills({projectRoot:context.projectRoot ?? ""});
-      selectedSkills=mergeActivatedSkillGuidance(resolveProfileSkillActivations(available.skills,profile),resolveWorkSkillActivations(available.skills,work),selectedSkills ?? []);
+      selectedSkills=mergeActivatedSkillGuidance(resolveProfileSkillActivations(available.skills,profile,{includeRecommended:reviewIds.length>0}),resolveWorkSkillActivations(available.skills,work),selectedSkills ?? []);
     }
     // Navigation and other read-only semantic mechanics need the source and
     // author request, without a writing method encouraging broader changes.
