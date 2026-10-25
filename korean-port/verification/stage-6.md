@@ -118,7 +118,8 @@ $ novel-brief.py interview --work test-6/works/test-6-murim-나루-객주의-짐
 
 ### 2-5. 1화 → "2화 써줘"(일괄)
 - 1화: `write next … --count 1 --context-file test-6/directions/ch1.txt`.
-- 일괄: "N화 써줘"를 "N개 회차"로 보고 2화·3화를 질문 없이 계획대로 썼다. 회차마다 `direct --plan -o chN.txt` → `write next --count 1 --context-file chN.txt`,
+- 일괄: "N화 써줘"를 "N개 회차"로 보고 2화·3화를 질문 없이 계획대로 썼다.
+  (주석, 2026-10-26: 이 해석은 사용자 결정 전의 일이다. 결정 뒤에는 "2화 써줘"처럼 회차 번호만 말하면 그 한 회차만 대화형으로 쓴다 — PLAN 결정 사항.) 회차마다 `direct --plan -o chN.txt` → `write next --count 1 --context-file chN.txt`,
   끝날 때마다 멈춤 조건(상태 미반영 경고 `원고는 저장됐지만`, 작업 실패)을 확인했다.
 
 ## 3. `--context` 원문이 프롬프트에 들어간 줄

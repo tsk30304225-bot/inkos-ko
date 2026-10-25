@@ -159,7 +159,8 @@ works/<ID>`, then `direct works/<ID> --choice K -o FILE` and `write next <ID>
 --context-file FILE` (the same text is appended to
 `source/story/author_directions.md`). Items already answered in the brief or
 that file are not asked again. Briefings come only from the work's files;
-missing fields read "없음". "N개 화 써줘" / "다섯 화 써줘" (a number of chapters) is batch mode: no questions, per chapter
+missing fields read "없음". "N화 써줘"의 해석: 회차 수를 말하면("다섯 화 써줘", "5개 화 써줘", "5화 더 써줘", "3화 연달아 써줘") 일괄로 쓰고 질문은 생략한다. 회차 번호만 말하면("3화 써줘") 그 한 회차만 평소대로 브리핑 질문을 하고 대화형으로 쓴다. 그 번호가 다음 회차가 아니면 쓰지 않고 "다음은 N화"라고 알려 확인을 받는다.
+Batch mode: no questions, per chapter
 `direct --plan -o FILE` then `write next --count 1 --context-file FILE`; stop
 at a state-not-applied warning or a failed job, report a table (length, review
 observations, state applied) at the end, and mark any temporary author choice

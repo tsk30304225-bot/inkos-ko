@@ -10,6 +10,14 @@
 - 브랜치: `claude/eeum-n0rsol`. 작품 폴더는 git 무시(`.gitignore`에 `*`) 상태로 둔다.
 - 각 단계의 명령과 출력 원문(요약 말고)을 보고에 붙인다. 원고 본문은 몇 줄 이하로만 인용하고 분량·sha256으로 남긴다.
 
+## 저장소 받기
+
+Grok봇처럼 저장소가 없는 상태에서 시작하면 먼저 받는다. Codex 클라우드처럼 환경에 이 저장소를 연결했으면 이 단계를 건너뛰고, 브랜치만 맞춘다(`git checkout claude/eeum-n0rsol`).
+
+```sh
+git clone -b claude/eeum-n0rsol https://github.com/tsk30304225-bot/inkos-ko && cd inkos-ko
+```
+
 ## 0. 시작 기록
 
 ```sh
@@ -56,6 +64,7 @@ command -v xz || echo "xz 실행 파일 없음"
    python3 tools/novel-brief.py interview test-env/briefs/brief.md
    python3 tools/novel-brief.py interview test-env/briefs/brief.md --answer 1=1 --answer 2=1 --answer 3=1 --answer 4=1 --answer 5=1 --answer 6=2 --answer 7=1
    ```
+   답은 첫 명령이 출력한 질문 번호를 보고 정한다. 위 `--answer`는 질문이 7개일 때의 예시다(질문 수가 다르면 그 번호에 맞춘다).
    마지막 출력이 `물을 항목 없음`이어야 한다.
 2. 작품 만들기(제목이 `test-env-…`로 시작해야 ID가 `test-env-…`가 된다):
    ```sh
@@ -83,7 +92,8 @@ command -v xz || echo "xz 실행 파일 없음"
    tools/inkos-agent-bridge/inkos-agent run -- status <ID>
    cat $W/source/story/state/manifest.json                  # lastAppliedChapter: 1
    cat $W/source/story/author_directions.md                 # "## 1화" 항목 = test-env/ch1.txt
-   grep -rn "1화" tools/inkos-agent-bridge/runtime/requests/*/prompt.md | grep -c "$(head -c 40 test-env/ch1.txt)"   # 프롬프트에 --context 원문이 들어갔는가
+   # 프롬프트에 --context 원문이 들어갔는가: 첫 줄의 앞 20자(글자 단위)를 담은 요청 프롬프트를 센다
+   python3 -c "import glob,sys; head=open(sys.argv[1],encoding='utf-8').read().splitlines()[0][:20]; hits=[p for p in glob.glob('tools/inkos-agent-bridge/runtime/requests/*/prompt.md') if head in open(p,encoding='utf-8').read()]; print(repr(head), len(hits)); print(*hits, sep='\n')" test-env/ch1.txt
    ```
    - 1화 출력에 `경고: 1화 원고는 저장됐지만 상태…`가 있으면 상태 미반영이다. 그대로 보고한다.
    - job 로그(`inkos-agent job log $JOB`)에 영어 진행 문구(`Stage:`)나 중국어 줄이 있으면 그 줄을 보고한다.
@@ -111,6 +121,9 @@ python3 -I tools/inkos-agent-bridge/tests/test_bridge.py | tail -1
 python3 -I tools/tests/test_novel_drive.py | tail -1
 python3 -I tools/tests/test_novel_brief.py | tail -1
 ```
+
+실패 기준: 기준선은 core 757 · studio 307 · cli 101 = 1,165 통과, 브리지 33/33, Drive 38/38, novel-brief 27/27(Claude Code, 7단계).
+통과 수가 이보다 적거나 실패가 하나라도 있으면 실패다. 실패한 시험 이름과 출력 원문을 보고하고, 고치지 않는다.
 
 ## 7. 보고 양식
 

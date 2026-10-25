@@ -19,7 +19,7 @@ do not start the next stage until the supervisor's `[승인]`. Update that log
 - Keep AGPL-3.0-only and the upstream copyright notices.
 - Author choices are interactive by default: ask with `tools/novel-brief.py`
   (numbered questions), `pack --resume` before waiting, pass answers with
-  `write next --context-file`; "N개 화 써줘" / "다섯 화 써줘" is batch mode (no questions). Rules:
+  `write next --context-file`. "N화 써줘"의 해석: 회차 수를 말하면("다섯 화 써줘", "5개 화 써줘", "5화 더 써줘", "3화 연달아 써줘") 일괄로 쓰고 질문은 생략한다. 회차 번호만 말하면("3화 써줘") 그 한 회차만 평소대로 브리핑 질문을 하고 대화형으로 쓴다. 그 번호가 다음 회차가 아니면 쓰지 않고 "다음은 N화"라고 알려 확인을 받는다. Rules:
   `korean-port/RUNTIME.md` "작가 선택".
 - 실제 작품: 대화형은 질문을 기다리기 전에 재개용 압축본 전체를, 일괄은 회차마다 원고 `.md`를 Drive 'Inkos ko'에 올리고, 일괄이 끝나거나 멈출 때(경고·실패) 압축본을 올린다. 시험 작품(`test-`)은 올리지 않는다.
   Test works (IDs `test-…`) are never sent to the user, uploaded or committed.
