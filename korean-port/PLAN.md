@@ -225,3 +225,13 @@ names, scene order, or signature combinations" 원칙을 그대로 지킨다). �
   - 검증: 브리지 실제 실행으로 장르마다 `book create` architect 요청 프롬프트에 **해당 장르 문서 하나만** 들어감을 확인 → `korean-port/VERIFICATION.md`.
     단위 테스트(`korean-skills.test.ts`)에 장르 매핑·장르별 단일 첨부·zh/en 미첨부 추가. 전체(프록시 변수 제거): core 728 / studio 307 / cli 94 통과.
   - 다음: 2-2단계(드라마 대본, 설명형 영상 대본). **시작 전 사용자 확인 필요**: 드라마 대본 기본 형식(미니시리즈/세로형 숏드라마), AI 비디오 스튜디오의 입력 스키마(또는 예시 JSON), 설명 영상 목표 길이(롱폼/쇼츠).
+- 2026-10-25 (`claude/eeum-n0rsol`): **2-2단계 완료.** 사용자 결정: 드라마 기본 세로형 숏드라마, 설명 영상 기본 롱폼 8~15분, 스튜디오 스키마 없음 → Markdown 표.
+  - 드라마: `script` 프로필에 ko 분기(`agents/korean-script.ts`) — 한국어 명세, 필수 제목 `## 등장인물`/`## 장소`/`## 대본`, ko 기본 형식 `vertical_short_drama`,
+    `script-references.md`(등장인물·장소 목록, 영상 도구의 레퍼런스 고정용) 별도 저장. 한국어 `inkos-script-writing` 스킬(+`korean-drama-format.md` S#·장소(시간)·(E)/(F)/(N), `episode-scene-craft.md`).
+  - 설명 영상: ko 프로젝트에만 등록되는 프로필 `explainer-script`(`harness/korean-profiles.ts` — zh/en 프로필 목록 불변), 스킬 `inkos-ko-explainer-script`
+    (+`scene-table.md`, `review-questions.md` — 출처 없는 사실 주장은 항상 지적), 러너 `pipeline/korean-explainer-runner.ts`, 결정론적 형식 검사
+    `utils/korean-explainer-check.ts`(제목·열·장면 번호·초·합계·빈 칸·출처 번호, 관찰: 확인 필요 출처·내레이션 과밀/과소·미사용 출처). 검사는 기록만 하고 반려하지 않는다.
+  - CLI 새 명령: `inkos script create`, `inkos explainer create`(ko 프로젝트 전용). 기존 명령은 그대로.
+  - 검증: 브리지로 드라마 1회분·설명 영상 1편 실제 생성, 형식 검사 통과 → `korean-port/VERIFICATION.md`. 테스트 `korean-scripts.test.ts` 9개.
+  - 미뤄 둔 것: 설명 영상 JSON 내보내기(스튜디오 스키마가 정해지면), 설명 영상 검수(review) 동작은 스킬 질문만 있고 전용 검수 명령은 없음.
+  - 다음: 3단계(한국어 문장 점검, 관찰용).

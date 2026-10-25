@@ -68,7 +68,12 @@ describe("Korean explainer scene-table check", () => {
     const dense = `| 2 | 2 | ${"가".repeat(40)} | 화면 | 없음 | 확인 필요 |`;
     const result = checkExplainerScript(explainer([row(1, 40), dense], ["- [1] 쓰이지 않은 자료"]), "shorts");
     expect(result.errors).toEqual([]);
-    expect(result.observations.map((issue) => issue.code).sort()).toEqual(["narration-dense", "source-needed", "unused-source"]);
+    expect(result.observations.map((issue) => issue.code).sort()).toEqual(["narration-dense", "narration-sparse", "source-needed", "unused-source"]);
+  });
+
+  it("flags narration that is too sparse for its duration", () => {
+    const result = checkExplainerScript(explainer([`| 1 | 40 | 짧은 말 | 화면 | 없음 | 없음 |`]), "shorts");
+    expect(result.observations.map((issue) => issue.code)).toEqual(["narration-sparse", "unused-source"]);
   });
 
   it("requires the headings and exact columns", () => {

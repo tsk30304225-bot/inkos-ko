@@ -127,6 +127,7 @@ export function checkExplainerScript(markdown: string, target?: string | number)
     if (scene.narration && Number.isFinite(scene.seconds) && scene.seconds > 0) {
       const rate = countKo(scene.narration) / scene.seconds;
       if (rate > 8) observations.push({ code: "narration-dense", summary: `장면 ${label}: 내레이션이 1초에 약 ${rate.toFixed(1)}자(공백 제외)로 빠릅니다(참고 범위 4~7자).`, scene: label });
+      else if (rate < 3 && scene.seconds >= 10) observations.push({ code: "narration-sparse", summary: `장면 ${label}: 내레이션이 1초에 약 ${rate.toFixed(1)}자(공백 제외)로 길이에 비해 적습니다(참고 범위 4~7자). 화면만 머무는 의도라면 그대로 두세요.`, scene: label });
     }
   }
   for (const ref of listed) {
