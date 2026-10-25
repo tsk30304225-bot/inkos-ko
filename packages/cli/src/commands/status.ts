@@ -51,6 +51,7 @@ export const statusCommand = new Command("status")
           targetChapters: book.targetChapters,
           totalWords,
           avgWordsPerChapter: avgWords,
+          ...(book.language === "ko" ? { lengthUnit: "ko_chars" } : {}),
           observationCount,
           chaptersWithObservations,
           ...(opts.chapters ? {
@@ -64,7 +65,24 @@ export const statusCommand = new Command("status")
           } : {}),
         });
 
-        if (!opts.json) {
+        if (!opts.json && book.language === "ko") {
+          log(`  ${book.title} (${id})`);
+          log(`    상태: ${book.status}`);
+          log(`    플랫폼: ${book.platform} | 장르: ${book.genre}`);
+          log(`    회차: ${index.length} / ${book.targetChapters}`);
+          if (persistedChapterCount !== index.length) log(`    회차 파일: ${persistedChapterCount}개 — 회차 색인과 개수가 다릅니다.`);
+          log(`    분량: ${formatLengthCount(totalWords, countingMode)} (회당 평균 ${formatLengthCount(avgWords, countingMode)}, 공백 제외)`);
+          log(`    검수 의견: ${observationCount}건 (${chaptersWithObservations}개 회차)`);
+          if (opts.chapters && index.length > 0) {
+            log("");
+            for (const ch of index) {
+              const icon = ch.observations.length > 0 ? "!" : "+";
+              log(`    [${icon}] ${ch.number}화 "${ch.title}" | ${formatLengthCount(ch.wordCount, countingMode)} | ${ch.provenance}`);
+              for (const observation of ch.observations) log(`        ${observation.code}: ${observation.summary}`);
+            }
+          }
+          log("");
+        } else if (!opts.json) {
           log(`  ${book.title} (${id})`);
           log(`    Status: ${book.status}`);
           log(`    Platform: ${book.platform} | Genre: ${book.genre}`);
