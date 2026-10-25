@@ -18,6 +18,11 @@ settings - never from the command line or chat:
   novel-drive.py list
   novel-drive.py init-folder [--name inkos-novels]   # create the archive folder, print its id
 
+Overwrite protection: `pull` records the restored archive in <project>/.inkos-drive-base.
+`push` refuses when Drive's newest archive of the same work is not that recorded base
+(another session pushed in between, or this copy was never restored from Drive);
+`--force` overrides. A successful push records the new archive as the base.
+
 Use the narrow `drive.file` OAuth scope: the tool can then see only files it
 created, so create the folder with init-folder rather than in the Drive UI.
 """
@@ -27,6 +32,7 @@ import argparse
 import io
 import json
 import os
+import re
 import sys
 import tarfile
 import time
@@ -37,7 +43,8 @@ from pathlib import Path, PurePosixPath
 
 PREFIX = "inkos-novel-"
 SKIP_DIRS = {"runtime", "node_modules", "__pycache__", ".git"}
-SKIP_FILES = {".env", ".env.local"}
+BASE_FILE = ".inkos-drive-base"
+SKIP_FILES = {".env", ".env.local", BASE_FILE}
 # Endpoint overrides exist only for the offline test (tools/tests/test_novel_drive.py).
 TOKEN_URL = os.environ.get("INKOS_GDRIVE_TEST_TOKEN_URL", "https://oauth2.googleapis.com/token")
 API = os.environ.get("INKOS_GDRIVE_TEST_API", "https://www.googleapis.com/drive/v3")
@@ -151,8 +158,32 @@ def download(token: str, file_id: str) -> bytes:
 
 
 # ---------------------------------------------------------------- commands
-def archive_name(project: Path) -> str:
-    return f"{PREFIX}{project.resolve().name}-{time.strftime('%Y%m%d-%H%M%S')}.tar.gz"
+def archive_name(key: str) -> str:
+    return f"{PREFIX}{key}-{time.strftime('%Y%m%d-%H%M%S')}.tar.gz"
+
+
+def archive_key(name: str) -> str | None:
+    """Work key inside an archive name: inkos-novel-<key>-<YYYYMMDD-HHMMSS>.tar.gz."""
+    match = re.fullmatch(re.escape(PREFIX) + r"(.+)-\d{8}-\d{6}\.tar\.gz", name)
+    return match.group(1) if match else None
+
+
+def read_base(project: Path) -> dict | None:
+    try:
+        return json.loads((project / BASE_FILE).read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        return None
+
+
+def write_base(project: Path, name: str, file_id: str | None) -> None:
+    (project / BASE_FILE).write_text(json.dumps({"name": name, "id": file_id, "key": archive_key(name),
+                                                  "recordedAt": time.strftime("%Y-%m-%dT%H:%M:%S")}, ensure_ascii=False) + "\n",
+                                      encoding="utf-8")
+
+
+def project_key(project: Path) -> str:
+    base = read_base(project)
+    return (base or {}).get("key") or project.resolve().name
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -161,7 +192,9 @@ def main(argv: list[str] | None = None) -> None:
     p = sub.add_parser("pack"); p.add_argument("project"); p.add_argument("-o", "--output")
     p = sub.add_parser("unpack"); p.add_argument("archive"); p.add_argument("dest"); p.add_argument("--force", action="store_true")
     p = sub.add_parser("push"); p.add_argument("project"); p.add_argument("--keep", type=int, default=10)
-    p = sub.add_parser("pull"); p.add_argument("dest"); p.add_argument("--name"); p.add_argument("--force", action="store_true")
+    p.add_argument("--force", action="store_true", help="push even if Drive's newest archive is not this copy's base")
+    p = sub.add_parser("pull"); p.add_argument("dest"); p.add_argument("--name"); p.add_argument("--key", help="work key (archive name part)")
+    p.add_argument("--force", action="store_true")
     sub.add_parser("list")
     p = sub.add_parser("init-folder"); p.add_argument("--name", default="inkos-novels")
     args = parser.parse_args(argv)
@@ -169,7 +202,7 @@ def main(argv: list[str] | None = None) -> None:
     if args.command == "pack":
         project = Path(args.project)
         data = pack_bytes(project)
-        out = Path(args.output or archive_name(project))
+        out = Path(args.output or archive_name(project_key(project)))
         out.write_bytes(data)
         print(f"packed {project} -> {out} ({len(data)} bytes)")
     elif args.command == "unpack":
@@ -192,10 +225,22 @@ def main(argv: list[str] | None = None) -> None:
         elif args.command == "push":
             project = Path(args.project)
             data = pack_bytes(project)
-            name = archive_name(project)
+            key = project_key(project)
+            same = [item for item in list_archives(token, folder) if archive_key(item["name"]) == key]
+            base = read_base(project)
+            if same and not args.force:
+                latest = same[0]["name"]
+                if base is None:
+                    die(f"Drive already has archives of '{key}' (newest {latest}) but this copy was not restored from Drive; "
+                        "pull first, or pass --force to upload anyway", 3)
+                if base.get("name") != latest:
+                    die(f"Drive's newest archive of '{key}' is {latest}, but this copy is based on {base.get('name')}; "
+                        "another session pushed in between. Pull and merge first, or pass --force to upload anyway", 3)
+            name = archive_name(key)
             uploaded = upload(token, folder, name, data)
+            write_base(project, uploaded.get("name", name), uploaded.get("id"))
             print(f"uploaded {uploaded.get('name', name)} ({len(data)} bytes, id {uploaded.get('id')})")
-            same = [item for item in list_archives(token, folder) if item["name"].startswith(f"{PREFIX}{project.resolve().name}-")]
+            same = [item for item in list_archives(token, folder) if archive_key(item["name"]) == key]
             for old in same[max(args.keep, 1):]:
                 http("PATCH", f"{API}/files/{old['id']}", token=token, data=json.dumps({"trashed": True}).encode(),
                      headers={"Content-Type": "application/json"})
@@ -204,11 +249,15 @@ def main(argv: list[str] | None = None) -> None:
             archives = list_archives(token, folder)
             if args.name:
                 archives = [item for item in archives if item["name"] == args.name]
+            key = args.key or (read_base(Path(args.dest)) or {}).get("key")
+            if key:
+                archives = [item for item in archives if archive_key(item["name"]) == key]
             if not archives:
                 die("no archive found in the Drive folder")
             chosen = archives[0]
             count = unpack_bytes(download(token, chosen["id"]), Path(args.dest), args.force)
-            print(f"restored {chosen['name']} ({count} files) into {args.dest}")
+            write_base(Path(args.dest), chosen["name"], chosen.get("id"))
+            print(f"restored {chosen['name']} ({count} files) into {args.dest}; base recorded in {BASE_FILE}")
 
 
 if __name__ == "__main__":

@@ -140,6 +140,32 @@ r = run("list", extra=secrets)
 check("list shows archives", r.returncode == 0 and r.stdout.count("inkos-novel-") == 2, r.stdout + r.stderr)
 r = run("pull", str(tmp / "pulled"), extra=secrets)
 check("pull restores the newest archive", r.returncode == 0 and (tmp / "pulled/works/달빛/source/chapters/0001_시작.md").exists(), r.stdout + r.stderr)
+import time as _time
+# Overwrite protection: two copies of the same work.
+copy_b = tmp / "novel"                      # restored under another folder name
+r = run("pull", str(copy_b), extra=secrets)
+check("pull records the base archive", r.returncode == 0 and (copy_b / ".inkos-drive-base").exists(), r.stdout + r.stderr)
+base_b = json.loads((copy_b / ".inkos-drive-base").read_text(encoding="utf-8"))
+check("base key comes from the archive name, not the folder", base_b["key"] == "내-소설", str(base_b))
+_time.sleep(1.1)
+r = run("push", str(project), "--keep", "5", extra=secrets)   # session A pushes again
+check("session A push", r.returncode == 0, r.stdout + r.stderr)
+_time.sleep(1.1)
+r = run("push", str(copy_b), "--keep", "5", extra=secrets)    # session B is now behind
+check("push refused when Drive moved past this copy's base", r.returncode == 3 and "another session pushed" in r.stderr, r.stdout + r.stderr)
+import shutil as _shutil
+r = run("push", str(tmp / "pulled"), "--keep", "5", extra=secrets)   # pulled earlier, now stale too
+check("stale pulled copy refused", r.returncode == 3, r.stdout + r.stderr)
+_time.sleep(1.1)
+r = run("push", str(copy_b), "--keep", "5", "--force", extra=secrets)
+check("--force pushes anyway and moves the base", r.returncode == 0 and json.loads((copy_b / ".inkos-drive-base").read_text(encoding="utf-8"))["key"] == "내-소설", r.stdout + r.stderr)
+fresh = tmp / "fresh-copy" / "내-소설"
+_shutil.copytree(project, fresh, ignore=_shutil.ignore_patterns(".inkos-drive-base"))
+r = run("push", str(fresh), "--keep", "5", extra=secrets)
+check("copy never restored from Drive is refused when Drive has archives", r.returncode == 3 and "not restored from Drive" in r.stderr, r.stdout + r.stderr)
+out2 = tmp / "b.tar.gz"
+run("pack", str(copy_b), "-o", str(out2))
+check("base marker is not packed", ".inkos-drive-base" not in tarfile.open(out2).getnames())
 r = run("pull", str(tmp / "pulled2"), extra={**secrets, "INKOS_GDRIVE_REFRESH_TOKEN": "wrong"})
 check("bad refresh token fails", r.returncode != 0 and "HTTP 400" in r.stderr, r.stderr)
 
