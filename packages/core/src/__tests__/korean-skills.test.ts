@@ -10,7 +10,9 @@ import { prepareWorkerMessages } from "../agents/base.js";
 import { createWorkManifest, saveWorkManifest } from "../harness/work-store.js";
 import { KOREAN_GENRE_IDS, resolveKoreanGenre } from "../skills/korean-genre-references.js";
 
-const KOREAN_SKILL_IDS = ["inkos-long-writing", "inkos-story-review", "inkos-story-deslop", "inkos-short-writing"];
+// Korean versions of upstream skills (same IDs) and Korean-only skills.
+const KOREAN_SKILL_IDS = ["inkos-long-writing", "inkos-story-review", "inkos-story-deslop", "inkos-short-writing", "inkos-script-writing"];
+const KOREAN_ONLY_SKILL_IDS = ["inkos-ko-explainer-script"];
 
 async function projectWith(language: string | undefined) {
   const root = await mkdtemp(join(tmpdir(), "inkos-ko-skills-"));
@@ -28,9 +30,10 @@ describe("Korean skill layer", () => {
   it("ships exactly the Korean overrides with upstream IDs", async () => {
     const korean = await loadBuiltinAgentSkills(koreanSkillsRoot());
     expect(korean.diagnostics).toEqual([]);
-    expect(korean.skills.map((skill) => skill.id).sort()).toEqual([...KOREAN_SKILL_IDS].sort());
+    expect(korean.skills.map((skill) => skill.id).sort()).toEqual([...KOREAN_SKILL_IDS, ...KOREAN_ONLY_SKILL_IDS].sort());
     const builtinIds = new Set((await loadBuiltinAgentSkills()).skills.map((skill) => skill.id));
     for (const id of KOREAN_SKILL_IDS) expect(builtinIds.has(id), id).toBe(true);
+    for (const id of KOREAN_ONLY_SKILL_IDS) expect(builtinIds.has(id), id).toBe(false);
     expect(await readdir(koreanSkillsRoot())).toEqual(expect.arrayContaining(KOREAN_SKILL_IDS));
   });
 
@@ -59,7 +62,8 @@ describe("Korean skill layer", () => {
         expect(skill.body).toMatch(/[가-힣]/);
       }
       // Skills without a Korean version stay available from the built-ins.
-      expect(registry.getSkill("inkos-script-writing")?.baseDir).not.toContain("skills-ko");
+      expect(registry.getSkill("inkos-storyboard")?.baseDir).not.toContain("skills-ko");
+      expect(registry.getSkill("inkos-ko-explainer-script")?.baseDir).toContain("skills-ko");
 
       const override = join(root, "skills", "inkos-long-writing");
       await mkdir(override, { recursive: true });

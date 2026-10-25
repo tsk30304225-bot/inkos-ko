@@ -2,6 +2,7 @@ import { BaseAgent } from "./base.js";
 import { completeLongForm } from "../llm/long-form-completion.js";
 import { materializeStoryGraph } from "../interactive-film/generate.js";
 import { InteractiveFilmPackageToolSchema, StoryboardPackageToolSchema } from "./production-document-tool.js";
+import { KOREAN_SCRIPT_HEADINGS, buildKoreanScriptSystemPrompt, buildKoreanScriptUserPrompt, renderKoreanScriptSpec } from "./korean-script.js";
 
 export type ScriptTargetFormat = string;
 
@@ -104,7 +105,7 @@ export class ScriptCreationAgent extends BaseAgent {
       recoverAfterContinuation: (fragments) => this.recoverProductionMarkdown(
         fragments,
         language,
-        language !== "zh" ? ["## Characters", "## Script"] : ["## 人物", "## 剧本正文"],
+        language === "ko" ? KOREAN_SCRIPT_HEADINGS : language !== "zh" ? ["## Characters", "## Script"] : ["## 人物", "## 剧本正文"],
       ),
     });
     return response.content.trim();
@@ -180,6 +181,7 @@ function productionBrief(input: {authorRequest?: string; requirements?: string},
 }
 
 export function renderScriptSpec(input: ScriptCreationInput): string {
+  if (input.language === "ko") return renderKoreanScriptSpec(input);
   if ((input.language ?? "zh") === "en") {
     return [
       `# ${input.title} Script Creation Spec`,
@@ -306,6 +308,7 @@ export function renderInteractiveFilmSpec(input: InteractiveFilmCreationInput): 
 
 
 function buildScriptCreationSystemPrompt(language: "zh" | "en" | "ko" = "zh"): string {
+  if (language === "ko") return buildKoreanScriptSystemPrompt();
   if (language !== "zh") {
     return [
       "Produce the confirmed script artifact with the activated script-writing Skill.",
@@ -321,6 +324,7 @@ function buildScriptCreationSystemPrompt(language: "zh" | "en" | "ko" = "zh"): s
 }
 
 function buildScriptCreationUserPrompt(input: ScriptCreationInput, language: "zh" | "en" | "ko" = "zh"): string {
+  if (language === "ko") return buildKoreanScriptUserPrompt(input);
   if (language !== "zh") {
     return [
       "## Creation Spec",

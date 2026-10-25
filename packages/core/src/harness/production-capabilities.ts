@@ -1,4 +1,6 @@
 import { createProfileWorkTools } from "./tools/work-creation.js";
+import { EXPLAINER_SCRIPT_PROFILE_ID, isKoreanProjectSync } from "./korean-profiles.js";
+import { createExplainerScriptTool } from "../agent/korean-explainer-tool.js";
 import {existsSync} from "node:fs";
 import { readdir } from "node:fs/promises";
 import {join} from "node:path";
@@ -315,6 +317,12 @@ export function createProductionCapabilityRegistry(
       activeSkills: environment.activeSkills,
     }), environment),
   ]);
+  if (isKoreanProjectSync(environment.projectRoot)) {
+    registerToolCapability(registry, EXPLAINER_SCRIPT_PROFILE_ID, "Explainer video script", scopedProduction(createExplainerScriptTool(environment.pipeline, environment.projectRoot, {
+      defaultSkills: environment.profileSkills?.(EXPLAINER_SCRIPT_PROFILE_ID),
+      activeSkills: environment.activeSkills,
+    }), environment));
+  }
   registerToolCapability(registry, "storyboard", "Storyboard creation", [
     ...scopedProduction(createStoryboardCreationTool(environment.pipeline, environment.projectRoot, {
       actionPayload: environment.confirmedCreation ? environment.actionPayload : undefined,

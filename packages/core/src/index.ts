@@ -601,3 +601,9 @@ export { runWorkerAgent, type WorkerAgentOptions } from "./agent/worker-agent.js
 export { compileStyleGuide } from "./agents/style-guide.js";
 export { LLM_API_FORMATS, isLLMApiFormat, toPiApi, type LLMApiFormat } from "./llm/api-format.js";
 export * from "./harness/index.js";
+export { createExplainerScriptTool, EXPLAINER_CREATE_TOOL } from "./agent/korean-explainer-tool.js";
+export { runExplainerScriptCreation, renderExplainerSpec, type ExplainerScriptRunOptions, type ExplainerScriptRunResult } from "./pipeline/korean-explainer-runner.js";
+export { checkExplainerScript, explainerTargetRange, renderExplainerCheck, EXPLAINER_COLUMNS, type ExplainerCheckResult } from "./utils/korean-explainer-check.js";
+export { EXPLAINER_SCRIPT_PROFILE_ID, EXPLAINER_SCRIPT_SKILL_ID, koreanWorkProfiles, isKoreanProjectSync } from "./harness/korean-profiles.js";
+export { KOREAN_GENRE_IDS, resolveKoreanGenre } from "./skills/korean-genre-references.js";
+export { KOREAN_SCRIPT_HEADINGS, KOREAN_DEFAULT_SCRIPT_FORMAT } from "./agents/korean-script.js";
