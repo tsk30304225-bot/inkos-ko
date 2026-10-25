@@ -386,3 +386,36 @@ H08 deferred → progressing(최근 진전 3), 나머지 복선 그대로. 분�
 3화 감사: 막는 문제 없음. `state-fact-stale-wording`(보통, 1화 수정 뒤 남은 상태 문구) 그대로, 경미 5건(낫 판매 수 공백, 앞선 질문, 싸움 횟수, 중복 박자, 1화 문구 반복).
 "한국어 문장 점검" 블록에 `cross-chapter-repetition` 3건 → reviewer가 2건(69·141행)은 경미로 남기고, 41행 낙관 묘사는 진품 확인 장면이라 의도된 반복으로 보고 뺐다.
 reviewer 보고: 감사 요청에 `inkos-story-review` 스킬 블록이 없었다. 저장한 감사 프롬프트를 다시 세어 보면 5-a 1차·재실행 1·2화와 5-b 판타지 1화 감사에도 모두 `inkos-long-writing` 하나뿐이다(회차 파이프라인의 원본 동작). 한국어 검수 기준(`review-matrix.md`)은 회차 감사에 들어가지 않고, 한국어 문장 기준은 long-writing의 `korean-prose.md`로 들어간다. 상태 검증 `false`. CLI·로그 중국어 줄 0.
+
+### 5. 다른 장르 (각 `book create` + 1화)
+
+| 장르 | 작품 | 설계 프롬프트 장르 문서 | 1화 | 분량(엔진 = 파일 재계산) | 1화 상태 | 복선 |
+| --- | --- | --- | --- | --- | --- | --- |
+| fantasy | 잿빛 탑의 견습 필사공(`novel-fantasy/`) | `references/genres/fantasy.md` 하나(설계 요청 4건 모두) | 빈 칸 | 2,932 | `lastAppliedChapter 1`, 요약 1행, 현재 상태 21행, 스냅샷 0·1 | H01 deferred→open(최근 진전 1), 새 후보 `hook` open, H02~H06 그대로 |
+| modern-fantasy | 환승역 균열 신고 접수처(`novel-mfantasy/`) | `references/genres/modern-fantasy.md` 하나 | 유출물 1 | 2,976 | `lastAppliedChapter 1`, 요약 1행, 현재 상태 21행, 스냅샷 0·1 | H01 deferred→open(최근 진전 1), 새 후보 `hook` open, H02~H06 그대로 |
+
+```
+fantasy:        j-20261025-171126-bc205396 book create exit=0 / j-20261025-171812-1790ac76 write next exit=0  "1화: 빈 칸 / 분량: 2932자"
+modern-fantasy: j-20261025-172402-842ccd53 book create exit=0 / j-20261025-172921-6f38a93c write next exit=0  "1화: 유출물 1 / 분량: 2976자"
+```
+
+- 인물 폴더: 둘 다 `roles/major`·`roles/minor`. 판타지 주요 5·보조 2(도하·가비·솔매·길명로·비연 / 차운·은로), 현대판타지 주요 5·보조 2(공나연·허봉수·민태건·양선희·채도윤 / 문옥례·공재연). 이름은 앞 작품들과 겹치지 않는다.
+- 감사 요청의 장르 문서: 판타지 1화 감사에 `fantasy.md`(검수 질문 6개), 현대판타지 1화 감사에 `modern-fantasy.md`. 각각 다른 장르 문서는 0건.
+- 1화 상태 검증: 두 작품 모두 첫 검증 `true`(본문과의 실제 충돌 — 판타지 "두 손이 굳어"(본문은 "그 손"), 현대판타지 "두 사람이 신고"(본문은 한 사람)) → 재정산 → 재검증 `false` → 저장.
+- 감사 요약: 판타지 — canon-copy-role-drift(주의, 본문은 도하가 부본을 베꼈다고 하고 이야기 틀·memo는 정본), 주어 모호 1곳(경미), 관찰 4.
+  현대판타지 — memo-resistance-not-staged(주의, 안전선 규칙이 장면에서 압력이 되지 않음), 경미 2, 관찰 3.
+  "한국어 문장 점검" 블록: 판타지 `ending-repetition` 5건, 현대판타지 3건 → reviewer가 모두 의도된 리듬·대구로 보고 관찰에서 뺐고 이유를 요약에 적음.
+- 브리지 요청(5-b 전체, 16:38~): 42건 모두 delivered, 실패 0, 버려짐 0. CLI·로그(5-b job 7개)의 중국어 줄 0.
+
+### 6. 4단계 대상 — ko 작품에 남은 영어 출력 (목록만, 고치지 않음)
+
+| 출력 | 나오는 곳 |
+| --- | --- |
+| `INFO [inkos] Stage: generating foundation / saving book config / writing foundation files / initializing control documents / creating initial snapshot` | `book create` 진행 로그 |
+| `INFO [inkos] Stage: preparing chapter inputs / writing chapter draft / collecting chapter review observations / validating truth file updates / rebuilding final truth files / persisting final chapter` | `write next` 진행 로그 |
+| `INFO [writer] Phase 1: creative writing for chapter N`, `Phase 2: state settlement for chapter N (N words)`, `Phase 2: projecting chapter N facts into runtime state` | `write next`·`revise`(ko에 `words` 단위) |
+| `INFO [inkos] streaming Ns, N chars (N CJK)` | 모델 응답 대기 |
+| `WARN [inkos] State validation: N observation(s) for chapter N`, `State projection needs reconciliation; recalculating settlement for chapter N`, `State validation retry still reports N observation(s) for chapter N` | 상태 검증 |
+| `Revising "<id>" chapter N [mode: spot-fix]...`, `Stage: loading revision context / revising chapter N / persisting revision / updating chapter index and snapshots`, `Chapter N revised`, `Words: N`, `Review observations: N` | `revise` 출력(결과 줄까지 영어) |
+
+코드에만 있는 것(출력 미확인): 알림 제목 `${book.title} 第${chapterNumber}章`(`pipeline/runner.ts`, 알림 채널 설정 시), `chapter-review.ts`의 검토 불가 요약(SURVEY 부록 B).

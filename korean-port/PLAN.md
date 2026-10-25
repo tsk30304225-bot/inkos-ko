@@ -329,3 +329,12 @@ names, scene order, or signature combinations" 원칙을 그대로 지킨다). �
     이야기 틀 9절 모두 프롬프트에, `--resume` 압축본(48,501바이트)을 빈 폴더에 풀어 `inkos status` 동일(경로만 다름), Drive에 4조각으로 올림(크기 일치).
     요청 16건 모두 delivered. 분량 1화 2,897 / 2화 2,880. 근거는 VERIFICATION.md "5-a 보완 후 재실행".
   - 시험(프록시 변수 제거): core 751 / studio 307 / cli 98 = 1,156 통과, 브리지 33/33, Drive 28/28.
+- 2026-10-25 (`claude/eeum-n0rsol`): **5-b단계 `(stage 5-b)`.** 감독 승인: 5-a. 근거는 VERIFICATION.md "5-b단계".
+  - `599dd1a` 보관 지침: `pack --resume`, 경로 순서(파일 건네기 → Drive 조각(작을 때, 10화 이상 금지) → OAuth 선택), `novel-drive.py split`/`join`(목록 파일의 크기·sha256 대조). Drive 시험 31/31.
+  - 파일 건네기: 파일 보내기 도구로 `--resume` 압축본(48,501바이트)을 보냄 → 사용자가 휴대폰에서 받음. 다음 세션은 대화에 첨부 → `/root/.claude/uploads/<세션ID>/…`.
+  - revise(`novel-5a2`): spot-fix 3번 모두 적용(각 1줄 diff), 재감사됨. 1화(최근 회차 아님)는 원고만 저장되고 상태·스냅샷은 그대로 — 지운 대사가 상태에 남는 부작용(보통) 발견.
+    2화(최근 회차)는 재정산이 저장되고 `snapshots/2`만 바뀜. 1화 박자 선취는 spot-fix를 고름(대사 한 줄, 앞 회차라 상태가 재정산되지 않아 큰 수정은 어긋남).
+  - 재개: 수정 뒤 `--resume`(49,008바이트)을 빈 폴더 `novel-5a2-resumed/`에 풀어 3화 "장날의 낫" 2,940자, `lastAppliedChapter 3`, 1·2화 상태 사례 2개 이어받음.
+  - 장르: fantasy "잿빛 탑의 견습 필사공" 1화 2,932자, modern-fantasy "환승역 균열 신고 접수처" 1화 2,976자. 장르 문서 각 하나, 1화 상태 저장(둘 다 재정산 1회 후 통과).
+  - 발견: 회차 감사 요청에는 `inkos-story-review` 스킬이 붙지 않는다(원본 동작, 한국어 검수 기준표가 회차 감사에 안 들어감). revise 출력이 영어(4단계 목록 갱신).
+  - 시험(프록시 변수 제거): core 751 / studio 307 / cli 98 = 1,156 통과, 브리지 33/33, Drive 31/31. 요청 42건 모두 delivered.
