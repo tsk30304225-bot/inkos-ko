@@ -157,4 +157,14 @@ describe("Korean skill layer", () => {
     const review = (await loadLinkedSkillResources(korean.skills.find((skill) => skill.id === "inkos-story-review")!))[0]!.body;
     for (const value of ["`local`", "`structural`", "`unknown`"]) expect(review).toContain(value);
   });
+
+  it("states that engine-normalized values are not state contradictions", async () => {
+    const korean = await loadBuiltinAgentSkills(koreanSkillsRoot());
+    const state = (await loadLinkedSkillResources(korean.skills.find((skill) => skill.id === "inkos-long-writing")!))
+      .find((resource) => resource.path === "references/state-projection.md")!.body;
+    expect(state).toContain("## 상태 검증의 판정 기준");
+    for (const value of ["`startChapter`", "`reconciliationRequired: true`", "본문과 상태 사이의 사실 충돌만"]) expect(state).toContain(value);
+    const review = (await loadLinkedSkillResources(korean.skills.find((skill) => skill.id === "inkos-story-review")!))[0]!.body;
+    expect(review).toContain("상태 검증의 판정 기준");
+  });
 });

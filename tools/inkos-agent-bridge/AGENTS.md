@@ -97,6 +97,10 @@ The main session coordinates; subagents answer requests.
   It runs `claim`, `show`, writes its answer file, and runs `reply` itself.
 - Review/audit requests must go to a different subagent than the one that wrote
   the chapter under review, so the review is independent.
+- State validation judges only conflicts between the chapter text and the
+  projected state. Values the engine normalizes on save (a hook's
+  `startChapter` keeps the smaller value, so design-time hooks stay at 0) are
+  not contradictions; do not require reconciliation for them.
 - Planning, writing, revision and state settlement can share the writer role.
 - The bridge does not guess roles. `wait` shows the opening of each system
   prompt; read it (or the full prompt) to decide writer vs reviewer.

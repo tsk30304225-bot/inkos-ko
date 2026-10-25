@@ -22,6 +22,7 @@ import {
   type CliLanguage,
 } from "../localization.js";
 import { sendCommandNotification } from "../notify-helper.js";
+import { formatKoreanWriteStateNotice } from "../korean-state-notice.js";
 
 export const writeCommand = new Command("write")
   .description("Write chapters");
@@ -87,6 +88,7 @@ writeCommand
       if (!opts.json) {
         for (const result of results) {
           for (const line of formatWriteNextResultLines(language, result)) log(line);
+          if (language === "ko") for (const line of formatKoreanWriteStateNotice(result.chapterNumber, result.observations)) log(line);
           log("");
         }
       }

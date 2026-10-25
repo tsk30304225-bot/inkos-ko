@@ -233,6 +233,41 @@ studio `api/server.ts:196,934,1138,3979,6473`. C안은 로더 내부에서 `proj
 - 단편(`prompts/short-fiction.ts`, `agents/short-fiction.ts`, `pipeline/short-fiction-runner.ts`): 계획서 2단계 스킬 우선순위(`inkos-short-writing`)에 들어 있다.
 - `interaction/*`, `state/*`, `utils/*`: 장편 저장·내보내기 경로라 대상 안이다.
 
+## 7. 상태 검증이 `reconciliationRequired: true`를 낼 때 엔진이 하는 일 (2026-10-25, 코드 확인)
+
+새 회차를 쓸 때(`pipeline/runner.ts` → `pipeline/chapter-truth-validation.ts` → `pipeline/chapter-state-recovery.ts`):
+
+1. 정산(writer `settleChapterState`) → 상태 검증(`StateValidatorAgent.validate`).
+2. 검증 결과가 `consistent: false` 또는 `reconciliationRequired: true`면 `reconcileChapterStateAfterReview`가 **재정산을 한 번** 한다.
+   검증 지적을 `validationFeedback`으로 넘기고(`allowReapply: true`), 같은 기준 상태에 대해 다시 정산한 뒤 **한 번 더 검증**한다. 반복은 없다.
+3. 재검증이 `consistent: true`이고 `reconciliationRequired: false`면 재정산 결과를 쓴다(`kind: "reconciled"`).
+4. 아니면(`kind: "unresolved"`, 또는 검증 호출이 예외로 실패) `preserveCanonicalRuntimeState`가 **저장된 기준 상태를 그대로 다시 렌더링**한다
+   (`runtimeStateApplied: false`). 즉 원고는 저장하고, 이번 회차의 상태 변화(현재 상태·복선·회차 요약, `manifest.lastAppliedChapter`)는 버린다.
+5. 회차 색인(`chapters/index.json`)의 그 회차 관찰에 검증 관찰이 붙는다: 코드 `state-reconciliation`(검증 보고가 있을 때),
+   `state-validation`(보고 없이 미해결, `unresolvedStateObservation`), `state-validation-unavailable`(검증 호출 실패).
+   `state-projection-review`는 일치 판정에 붙은 보고라서 실패 표시가 아니다.
+6. 드러나는 정도(원본): `runtimeStateApplied`는 메모리에만 있고 저장되지 않는다. 회차 상태값이나 `state-degraded` 같은 표시는 없다.
+   `write next` 출력에는 검수 의견 목록 안에 위 관찰이 한 줄로 섞여 나올 뿐이고, `inkos status`에는 검수 의견 개수만 나온다.
+   다음 회차가 성공하면 `lastAppliedChapter`가 그 회차로 올라가므로, manifest만 보면 앞 회차가 빠진 것을 알 수 없다.
+7. 다음 회차의 정산은 저장된 기준 상태 위에서 한다. 정산 프롬프트에는 이전 회차 본문이 없으므로, 빠진 회차의 사실은 다음 회차 본문이 다시 말한 것만 복구된다.
+
+엔진이 정규화하는 값(`state/state-reducer.ts` `mergeHookRecord`, `applyFactOps`) — 정산이 무엇을 보내든 저장값은 이 규칙을 따른다:
+`startChapter = min(기존, 새 값)`, `lastAdvancedChapter = max(기존, 새 값)`, `resolved`·`superseded` 상태는 되돌리지 않음,
+빈 type·expectedPayoff·notes는 기존 값 유지, 같은 주어·술어의 새 사실이 오면 옛 사실은 `validUntilChapter = 회차-1`로 만료.
+
+5-a 1차에서 실제로 걸린 사례: 1화 재검증이 "메모는 startChapter 1, 표는 0"을 모순으로 판정 → 1화 상태 미적용.
+0은 설계 단계에 등록된 복선에 대한 `min` 규칙의 결과라서 어떤 재정산으로도 바뀌지 않는다. 대응: 한국어 스킬 `state-projection.md`의 "상태 검증의 판정 기준"과
+브리지 reviewer 지침에 "엔진이 정규화하는 값은 모순이 아니다"를 명시하고, ko `write next`·`status`에 상태 미적용 회차를 경고로 표시한다(5-a 보완).
+
+## 8. 원본 결함 수정 (모든 언어에 적용되는 원본 코드 변경)
+
+ko 분기가 아니라 원본 결함을 고친 변경. 원본 업데이트를 받을 때 원본 쪽 수정 여부를 먼저 확인한다.
+
+| 커밋 | 파일 | 결함 | 수정 |
+| --- | --- | --- | --- |
+| `0d1465d` | `packages/cli/src/commands/write.ts` | `inkos write next`가 `write_chapters` 동작에 필수인 `startChapterNumber`를 넘기지 않아, 모든 언어에서 모델 호출 전에 `Unable to decode value as it does not match the expected schema`로 실패 | `state.getNextChapterNumber(bookId)`를 넘김(1줄) |
+| (5-a 보완) | `packages/core/src/agents/composer.ts` `slugifyAnchor` | 앵커 정규식이 `a-z0-9`와 한자만 남겨, 한글 제목이 모두 `section`이 되고 같은 앵커의 절이 중복 제거로 사라짐 | 정규식에 한글 음절 `가-힣` 추가(1줄). 한글이 없는 zh/en 문자열의 결과는 같음 |
+
 ## 부록 A. core agents·prompts·harness·forecast
 
 
