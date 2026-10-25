@@ -62,6 +62,7 @@ import { commitAtomicFileSet } from "../utils/atomic-file-set.js";
 import { compileStyleGuide } from "../agents/style-guide.js";
 import { compileImportSource, renderCompleteImportSource } from "../agents/import-context.js";
 import { pickByLanguage, promptLanguage } from "../utils/korean-language.js";
+import { KOREAN_STAGE_PREFIX, withKoreanLogMessage } from "../utils/korean-log-messages.js";
 
 function mergeChapterRevisionInstructions(
   persistedBrief: string,
@@ -276,16 +277,16 @@ export class PipelineRunner {
 
   private logStage(language: LengthLanguage, message: { zh: string; en: string }): void {
     this.config.logger?.info(
-      `${this.localize(language, { zh: "阶段：", en: "Stage: " })}${this.localize(language, message)}`,
+      `${this.localize(language, { zh: "阶段：", en: "Stage: ", ko: KOREAN_STAGE_PREFIX })}${this.localize(language, withKoreanLogMessage(message))}`,
     );
   }
 
   private logInfo(language: LengthLanguage, message: { zh: string; en: string }): void {
-    this.config.logger?.info(this.localize(language, message));
+    this.config.logger?.info(this.localize(language, withKoreanLogMessage(message)));
   }
 
   private logWarn(language: LengthLanguage, message: { zh: string; en: string }): void {
-    this.config.logger?.warn(this.localize(language, message));
+    this.config.logger?.warn(this.localize(language, withKoreanLogMessage(message)));
   }
 
   async prepareDraftBook(book: BookConfig): Promise<void> {
@@ -1446,7 +1447,7 @@ export class PipelineRunner {
     if (this.config.notifyChannels && this.config.notifyChannels.length > 0) {
       const chapterLength = formatLengthCount(finalWordCount, lengthSpec.countingMode);
       await dispatchNotification(this.config.notifyChannels, {
-        title: `${book.title} 第${chapterNumber}章`,
+        title: book.language === "ko" ? `${book.title} ${chapterNumber}화` : `${book.title} 第${chapterNumber}章`,
         body: [
           `**${persistenceOutput.title}** | ${chapterLength}`,
           auditResult.summary,

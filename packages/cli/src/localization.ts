@@ -141,7 +141,7 @@ export function formatWriteNextResultLines(
     lines.push(localize(language, {
       zh: "  问题：",
       en: "  Issues:",
-    ko: "  검수 의견:",
+    ko: "  의견 목록:",
     }));
     for (const observation of result.observations) {
       lines.push(`    ${observation.code}: ${observation.summary}`);

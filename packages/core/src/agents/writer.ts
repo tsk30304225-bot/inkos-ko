@@ -13,6 +13,7 @@ import type { ChapterMeta } from "../models/chapter.js";
 import { RuntimeStateDeltaSchema, type RuntimeStateDelta } from "../models/runtime-state.js";
 import { buildLengthSpec, countChapterLength, resolveLengthCountingMode } from "../utils/length-metrics.js";
 import { koreanLengthPhrase } from "../utils/korean-language.js";
+import { koreanLogMessage } from "../utils/korean-log-messages.js";
 import {
   buildRuntimeStateArtifacts,
   buildRuntimeStateArtifactsFromSnapshot,
@@ -87,6 +88,7 @@ export class WriterAgent extends BaseAgent {
   }
 
   private localize(language: "zh" | "en" | "ko", messages: { zh: string; en: string }): string {
+    if (language === "ko") return koreanLogMessage(messages) ?? messages.en;
     return language !== "zh" ? messages.en : messages.zh;
   }
 
