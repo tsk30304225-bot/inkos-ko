@@ -1,10 +1,7 @@
 #!/bin/sh
 # Paste into the Codex cloud environment's "Setup script" (runs with internet
-# before the task; the task itself needs no internet and no API key).
-# Assumes this package is committed to your repo at tools/inkos-agent-bridge and
-# the novel project lives at ./my-novel. Adjust both paths.
+# before the task; the task itself needs no internet and no model API key).
+# Builds the Korean 2.0 fork from this repository, restores the novel from
+# Google Drive when INKOS_GDRIVE_* secrets are set, and installs the bridge.
 set -eu
-npm install -g @actalk/inkos@1.8.0
-[ -f my-novel/inkos.json ] || inkos init my-novel --lang en   # --lang ko needs the Korean patch
-sh tools/inkos-agent-bridge/install.sh --project "$PWD/my-novel"
-echo 'export PATH="$HOME/.local/bin:$PATH"; export INKOS_AGENT_PROJECT="'"$PWD"'/my-novel"' >> "$HOME/.bashrc"
+sh tools/setup-cloud.sh --project "$PWD/novel"

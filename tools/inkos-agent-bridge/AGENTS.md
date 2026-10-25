@@ -116,3 +116,8 @@ present: state each setting item's purpose, context, observable criteria and
 limits; keep confirmed canon, plans and undecided author choices separate. For
 light martial fiction see `현대한국-라이트무협-기준.md`; do not force
 reincarnation, a fixed cultivation ladder, or a Korean historical setting.
+
+In the Korean fork, novel projects live only in the container. Before ending a
+cloud session run `python3 tools/novel-drive.py push <project>` from the fork
+repository and report the uploaded archive name (or the failure) to the user;
+see `korean-port/RUNTIME.md`.

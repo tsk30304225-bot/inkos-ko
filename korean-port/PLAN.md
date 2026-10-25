@@ -178,7 +178,7 @@ names, scene order, or signature combinations" 원칙을 그대로 지킨다). �
 - 화면 언어: 한국어·영어 선택. 화면 구성은 에이전트(Codex·Grok봇·Claude Code) 실행 기준, Studio 한국어화는 후순위. 사용자는 본인 1명. (2026-10-25 사용자 결정)
 - 영어·중국어 동작 유지 원칙은 그대로 둔다(원본 업데이트를 받을 때 충돌을 줄이고 원본 테스트를 기준선으로 쓰기 위해). 기존 패치의 zh/en 기본값 변경은 되돌리고, 한국어는 `--lang ko`/`inkos.json`의 `language: "ko"`로 선택한다.
 - 실행 환경: Claude Code(클라우드), Codex(클라우드), Grok봇. API 키 없이 브리지로만 실행. (2026-10-25 사용자 확인)
-- 작품 폴더 보관 방식(세션 간 원고 이어가기): 미정.
+- 작품 폴더 보관 방식(세션 간 원고 이어가기): **Google Drive**. 작품 프로젝트 전체를 tar.gz로 묶어 Drive 폴더 하나에 올리고 다음 세션에서 복원(`tools/novel-drive.py`). 인증은 각 실행 환경의 비밀값(OAuth refresh token, `drive.file` 범위). (2026-10-25 사용자 결정)
 - 대상 장르·유형: 한국 라이트 무협, 판타지, 현대판타지, 드라마 대본, 설명형 영상 대본. (2026-10-25 사용자 결정)
 - 드라마 대본 기본 형식: **세로형 숏드라마**(작품마다 바꿀 수 있음, 미니시리즈형도 지원). (2026-10-25 사용자 결정)
 - 설명 영상 대본: 기본 길이 **롱폼(8~15분)**. 출력 형식은 스튜디오 스키마가 아직 없어 **장면 목록 Markdown 표**로 낸다. 스키마가 정해지면 같은 내용을 JSON으로도 내보낸다. (2026-10-25 사용자 결정)
@@ -245,3 +245,13 @@ names, scene order, or signature combinations" 원칙을 그대로 지킨다). �
   - 검증: `korean-prose-check.test.ts` 7개 — 점검별 단위 테스트, 줄 번호 일치, **auditor 메시지에 ko만 블록이 들어가고 en은 들어가지 않음**(검수 호출 직전 메시지를 가로채 확인).
     전체(프록시 변수 제거): core 744 / studio 307 / cli 94 통과. 브리지 실물 확인은 5단계 `write next`에서 함께 한다.
   - 다음: 4단계(CLI 화면 한국어) → 4-1단계(설치 스크립트).
+- 2026-10-25 (`claude/eeum-n0rsol`): **4-1단계(설치 경로) 완료, 일부는 다음 새 세션에서 확인 필요.**
+  - `tools/setup-cloud.sh`: Node 22.16+·python3 확인 → pnpm 설치/빌드 → `~/.local/bin/inkos` 래퍼 → Drive 비밀값이 있으면 최신 보관본 복원, 없으면 `inkos init --lang ko`
+    → 브리지 설치 → `~/.bashrc` 환경 변수 → `inkos-agent doctor`. 기본 작품 위치 `<저장소>/novel`(내부에 `.gitignore` `*`). API 키·외부 모델 설정 없음.
+  - `tools/novel-drive.py`(표준 라이브러리만): `pack`/`unpack`/`push`/`pull`/`list`/`init-folder`. `.env`·`runtime/` 제외, 압축 해제 시 대상 밖 경로·링크 거부,
+    기존 프로젝트 덮어쓰기는 `--force`일 때만, 같은 작품의 최신 N개(기본 10)만 남김. 오프라인 가짜 Drive 서버 시험 `tools/tests/test_novel_drive.py` 16/16 통과.
+  - 이 세션에서 확인한 것: `setup-cloud.sh --no-build --no-pull`로 새 ko 프로젝트 생성·브리지 설치·`doctor` 통과(빌드 단계 명령은 0단계에서 같은 명령으로 확인),
+    컨테이너에서 `www.googleapis.com`(401)·`oauth2.googleapis.com`(404) 접속 가능(인증 없이 연결만 확인). Codex setup 스크립트를 1.8 npm 설치에서 이 스크립트 호출로 교체.
+  - **아직 확인 못 한 것**: 실제 Google 계정으로 `init-folder`/`push`/`pull`(사용자가 비밀값을 넣어야 함), 완전히 새 클라우드 세션에서 Setup script 한 번으로 `doctor` 통과.
+  - `korean-port/RUNTIME.md`: 세 환경별 안내, Drive 인증 준비 절차(사용자용), 세션 끝 `push` 규칙. 브리지 `AGENTS.md`에도 `push` 규칙 추가.
+  - 다음: 5단계(실제 생성 검증) + 4단계(CLI 문구, 5단계 실행 출력에서 중국어가 남는지 확인하며 함께 처리).
