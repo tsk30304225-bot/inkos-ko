@@ -235,3 +235,13 @@ names, scene order, or signature combinations" 원칙을 그대로 지킨다). �
   - 검증: 브리지로 드라마 1회분·설명 영상 1편 실제 생성, 형식 검사 통과 → `korean-port/VERIFICATION.md`. 테스트 `korean-scripts.test.ts` 9개.
   - 미뤄 둔 것: 설명 영상 JSON 내보내기(스튜디오 스키마가 정해지면), 설명 영상 검수(review) 동작은 스킬 질문만 있고 전용 검수 명령은 없음.
   - 다음: 3단계(한국어 문장 점검, 관찰용).
+- 2026-10-25 (`claude/eeum-n0rsol`): **3단계 완료.**
+  - `packages/core/src/utils/korean-prose-check.ts`: 서술 문장(대사 줄 제외)의 같은 어미 연속(끝 두 음절, 4문장 이상)·같은 문장 시작 연속(3문장 이상),
+    번역투 후보(`~는 것이었다`, `되어지다`, `~에 의해`, `~에 있어서`, `~을 가지다`(have 직역), `~함에도 불구하고`, `~임에 틀림없다`, `가장 ~ 중 하나`, `그녀` 5회 이상),
+    작품 피로어 빈도, 앞 3개 회차와 같은 5어절 구절. 결과는 `numberReviewSource`와 같은 줄 번호.
+  - 계획과 다른 점: 2.0 `book_rules`에는 피로어 필드가 없다(1.8 `fatigueWordsOverride`). 그래서 작품별 목록 파일 `story/korean_fatigue_words.md`(한 줄에 하나)를 선택적으로 읽는다. 스키마는 바꾸지 않았다.
+  - 연결: `agents/korean-audit-evidence.ts` + `agents/continuity.ts` 2줄 — ko 작품의 auditor 요청에 `## 한국어 문장 점검 (host가 계산한 결정론적 관찰)` 시스템 블록을 넣는다.
+    "자동 실패 기준이 아니며, 읽기를 방해하는 것만 줄을 인용해 남기라"는 지시와 함께. 점수·반려 없음(2.0 계약 유지).
+  - 검증: `korean-prose-check.test.ts` 7개 — 점검별 단위 테스트, 줄 번호 일치, **auditor 메시지에 ko만 블록이 들어가고 en은 들어가지 않음**(검수 호출 직전 메시지를 가로채 확인).
+    전체(프록시 변수 제거): core 744 / studio 307 / cli 94 통과. 브리지 실물 확인은 5단계 `write next`에서 함께 한다.
+  - 다음: 4단계(CLI 화면 한국어) → 4-1단계(설치 스크립트).
