@@ -531,3 +531,7 @@ writer와 reviewer는 서로 다른 서브에이전트(수정 범위·교체 4�
 ## 2026-10-25 — 6단계
 
 VERIFICATION이 커져서(47KB) 6단계부터 단계별 파일로 나눈다: [`verification/stage-6.md`](verification/stage-6.md).
+
+## 2026-10-25 — 7단계
+
+[`verification/stage-7.md`](verification/stage-7.md).

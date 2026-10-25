@@ -159,7 +159,7 @@ works/<ID>`, then `direct works/<ID> --choice K -o FILE` and `write next <ID>
 --context-file FILE` (the same text is appended to
 `source/story/author_directions.md`). Items already answered in the brief or
 that file are not asked again. Briefings come only from the work's files;
-missing fields read "없음". "N화 써줘" is batch mode: no questions, per chapter
+missing fields read "없음". "N개 화 써줘" / "다섯 화 써줘" (a number of chapters) is batch mode: no questions, per chapter
 `direct --plan -o FILE` then `write next --count 1 --context-file FILE`; stop
 at a state-not-applied warning or a failed job, report a table (length, review
 observations, state applied) at the end, and mark any temporary author choice
@@ -170,12 +170,22 @@ In the Korean fork, novel projects live only in the container. Follow this polic
 
 ## 원고 보관 지침 (모든 실행 환경)
 
-실제 작품은 회차 완료 시 연결 도구로 Drive 'Inkos ko'에 올린다. 시험 작품(`test-`)은 올리지 않는다.
+실제 작품: 대화형은 질문을 기다리기 전에 재개용 압축본 전체를, 일괄은 회차마다 원고 `.md`를 Drive 'Inkos ko'에 올리고, 일괄이 끝나거나 멈출 때(경고·실패) 압축본을 올린다. 시험 작품(`test-`)은 올리지 않는다.
 
 ### 실제 작품 (사용자가 실제로 쓰는 작품)
 - 작품 폴더와 원고는 공개 포크에 커밋하지 않는다.
-- 회차 하나를 끝낼 때마다, 그리고 세션 끝에 재개용 압축본을 만든다:
-  python3 tools/novel-drive.py pack <작품 폴더> <작품ID>_<YYYYMMDD-HHMM>_<마지막 회차>화.tar.gz --resume
+- 압축본 만들기: `python3 tools/novel-drive.py pack <작품 폴더> <작품ID>_<YYYYMMDD-HHMM>_<마지막 회차>화 --resume`
+  → `.tar.xz`(그 환경의 Python에 `lzma`가 없으면 경고하고 `.tar.gz`). `unpack`은 두 형식을 모두 알아본다.
+- 올리는 때:
+  - 대화형: 질문하고 답을 기다리기 전마다 압축본 전체(기다리는 동안 VM이 회수돼도 상태를 잃지 않게).
+  - 일괄: 회차가 끝날 때마다 그 회차 원고 `.md` 하나. 압축본은 일괄이 끝날 때와 멈출 때(상태 미반영 경고·작업 실패).
+  - 세션 끝: 마지막으로 올린 압축본 뒤에 바뀐 것이 있으면 압축본.
+- Drive 파일 이름(시각은 올린 시각, UTC):
+  - 압축본: `<작품ID>_<YYYYMMDD-HHMM>_<마지막 회차>화.tar.xz`(gz면 `.tar.gz`). 조각은 `<압축본 이름>.part<N>of<M>`, 목록은 `<압축본 이름>.parts.json`.
+  - 원고: `<작품ID>_<회차 네 자리>화_<YYYYMMDD-HHMM>.md`(예: `철쭉골-대장간-막내_0004화_20261026-0930.md`). 내용은 `chapters/<회차 네 자리>_<제목>.md` 그대로.
+    같은 회차를 다시 올리면 시각만 다른 새 파일이 된다. 지우지 않는다.
+- 받기(다음 세션): 가장 늦은 압축본을 받아(조각이면 `join`) 확인한 뒤 `unpack`한다. 그 압축본의 마지막 회차보다 뒤 회차의 원고 `.md`가 Drive에 있으면
+  그 회차는 원고만 있고 상태가 없다. 사용자에게 알리고 어떻게 할지 묻는다(그 원고를 참고해 다시 쓰기 등). 엔진 상태를 손으로 만들지 않는다.
 - 기본: 이 환경의 Google Drive 연결 도구로 에이전트가 직접 "Inkos ko" 폴더에 올린다. 연결 도구가 한 번에 받는 양(약 12KB)보다 크면
   아래 "조각 업로드"대로 나눠 올린다. Drive 업로드는 각 에이전트의 연결 도구가 하는 일이며, 포크 코드에 Drive 기능을 더 넣지 않는다.
 - 보조: 사용자에게 파일로 건넨다 — 사용자가 원할 때, 또는 Drive 업로드가 실패했을 때.
@@ -191,7 +201,7 @@ In the Korean fork, novel projects live only in the container. Follow this polic
 
 ### 파일로 건네고 다음 세션에서 받기
 - 건네기(Claude Code): 압축본을 파일 보내기 도구(`SendUserFile`, 첨부 형식)로 보낸다. 사용자는 Claude 앱 대화에서 파일 카드를 눌러 휴대폰에 저장한다.
-- 받기(다음 세션): 사용자가 새 세션 대화에 그 `.tar.gz`를 첨부한다. Claude Code 클라우드 세션에서는 `/root/.claude/uploads/<세션ID>/<접두어>-<파일명>`에 놓인다.
+- 받기(다음 세션): 사용자가 새 세션 대화에 그 압축본(`.tar.xz` 또는 `.tar.gz`)을 첨부한다. Claude Code 클라우드 세션에서는 `/root/.claude/uploads/<세션ID>/<접두어>-<파일명>`에 놓인다.
   `sha256sum`으로 보고했던 값과 맞춘 뒤 `python3 tools/novel-drive.py unpack <파일> <작품 폴더>`로 푼다.
 
 ### 조각 업로드 (Drive 연결 도구가 내용을 호출 안에 직접 받는 경우)

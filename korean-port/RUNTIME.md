@@ -62,7 +62,7 @@ inkos-agent wait --job $JOB --timeout 90     # 브리지 1.2: 항상 exit 0, 첫
   3. 매 회차 전: `novel-brief.py next works/<ID>` → 다음 화 브리핑(직전 화 요약, 열린 복선, 권 지도상 다음 박자, 정해진 작가 선택,
      전개 선택지 — "계획대로 진행"과 "직접 지시" 포함). 답은 `novel-brief.py direct works/<ID> --choice K -o <파일>`(또는 `--text "작가의 말"`)로
      `--context` 원문을 만들고, `inkos write next <ID> --context-file <파일>`로 넘긴다. `direct`는 같은 원문을 `author_directions.md`의 "N화" 항목에 그대로 덧붙인다.
-- 일괄("N화 써줘"): 회차별 질문을 생략하고 계획대로 쓴다. 회차마다 `direct works/<ID> --plan -o <파일>` → `write next <ID> --count 1 --context-file <파일>`.
+- 일괄("N개 화 써줘", "다섯 화 써줘"처럼 쓸 회차 수를 말할 때): 회차별 질문을 생략하고 계획대로 쓴다. 회차마다 `direct works/<ID> --plan -o <파일>` → `write next <ID> --count 1 --context-file <파일>`.
   - 멈추는 조건: 상태 미반영 경고(`경고: N화 원고는 저장됐지만 상태(…)는 반영되지 않았습니다.`) 또는 작업 실패. 그 회차에서 멈추고 보고한다.
   - 감사가 지적한 문제는 끝에 모아 보고한다. 끝나면 회차별 분량·감사 의견 수·상태 반영 여부를 표로 보고하고, 다음에 정할 선택지(`next`)를 붙인다.
   - 일괄 중에도 미정인 작가 선택은 확정하지 않는다. 임시로 정했다면 "가정"으로 표시해 보고한다.
@@ -71,12 +71,22 @@ inkos-agent wait --job $JOB --timeout 90     # 브리지 1.2: 항상 exit 0, 첫
 
 ## 원고 보관 지침 (모든 실행 환경)
 
-실제 작품은 회차 완료 시 연결 도구로 Drive 'Inkos ko'에 올린다. 시험 작품(`test-`)은 올리지 않는다.
+실제 작품: 대화형은 질문을 기다리기 전에 재개용 압축본 전체를, 일괄은 회차마다 원고 `.md`를 Drive 'Inkos ko'에 올리고, 일괄이 끝나거나 멈출 때(경고·실패) 압축본을 올린다. 시험 작품(`test-`)은 올리지 않는다.
 
 ### 실제 작품 (사용자가 실제로 쓰는 작품)
 - 작품 폴더와 원고는 공개 포크에 커밋하지 않는다.
-- 회차 하나를 끝낼 때마다, 그리고 세션 끝에 재개용 압축본을 만든다:
-  python3 tools/novel-drive.py pack <작품 폴더> <작품ID>_<YYYYMMDD-HHMM>_<마지막 회차>화.tar.gz --resume
+- 압축본 만들기: `python3 tools/novel-drive.py pack <작품 폴더> <작품ID>_<YYYYMMDD-HHMM>_<마지막 회차>화 --resume`
+  → `.tar.xz`(그 환경의 Python에 `lzma`가 없으면 경고하고 `.tar.gz`). `unpack`은 두 형식을 모두 알아본다.
+- 올리는 때:
+  - 대화형: 질문하고 답을 기다리기 전마다 압축본 전체(기다리는 동안 VM이 회수돼도 상태를 잃지 않게).
+  - 일괄: 회차가 끝날 때마다 그 회차 원고 `.md` 하나. 압축본은 일괄이 끝날 때와 멈출 때(상태 미반영 경고·작업 실패).
+  - 세션 끝: 마지막으로 올린 압축본 뒤에 바뀐 것이 있으면 압축본.
+- Drive 파일 이름(시각은 올린 시각, UTC):
+  - 압축본: `<작품ID>_<YYYYMMDD-HHMM>_<마지막 회차>화.tar.xz`(gz면 `.tar.gz`). 조각은 `<압축본 이름>.part<N>of<M>`, 목록은 `<압축본 이름>.parts.json`.
+  - 원고: `<작품ID>_<회차 네 자리>화_<YYYYMMDD-HHMM>.md`(예: `철쭉골-대장간-막내_0004화_20261026-0930.md`). 내용은 `chapters/<회차 네 자리>_<제목>.md` 그대로.
+    같은 회차를 다시 올리면 시각만 다른 새 파일이 된다. 지우지 않는다.
+- 받기(다음 세션): 가장 늦은 압축본을 받아(조각이면 `join`) 확인한 뒤 `unpack`한다. 그 압축본의 마지막 회차보다 뒤 회차의 원고 `.md`가 Drive에 있으면
+  그 회차는 원고만 있고 상태가 없다. 사용자에게 알리고 어떻게 할지 묻는다(그 원고를 참고해 다시 쓰기 등). 엔진 상태를 손으로 만들지 않는다.
 - 기본: 이 환경의 Google Drive 연결 도구로 에이전트가 직접 "Inkos ko" 폴더에 올린다. 연결 도구가 한 번에 받는 양(약 12KB)보다 크면
   아래 "조각 업로드"대로 나눠 올린다. Drive 업로드는 각 에이전트의 연결 도구가 하는 일이며, 포크 코드에 Drive 기능을 더 넣지 않는다.
 - 보조: 사용자에게 파일로 건넨다(아래 "파일로 건네고 다음 세션에서 받기") — 사용자가 원할 때, 또는 Drive 업로드가 실패했을 때.
@@ -95,7 +105,7 @@ inkos-agent wait --job $JOB --timeout 90     # 브리지 1.2: 항상 exit 0, 첫
 
 ### 파일로 건네고 다음 세션에서 받기
 - 건네기(Claude Code): 압축본을 파일 보내기 도구(`SendUserFile`, 첨부 형식)로 보낸다. 사용자는 Claude 앱 대화에서 파일 카드를 눌러 휴대폰에 저장한다.
-- 받기(다음 세션): 사용자가 새 세션 대화에 그 `.tar.gz`를 첨부한다. Claude Code 클라우드 세션에서는 `/root/.claude/uploads/<세션ID>/<접두어>-<파일명>`에 놓인다.
+- 받기(다음 세션): 사용자가 새 세션 대화에 그 압축본(`.tar.xz` 또는 `.tar.gz`)을 첨부한다. Claude Code 클라우드 세션에서는 `/root/.claude/uploads/<세션ID>/<접두어>-<파일명>`에 놓인다.
   `sha256sum`으로 보고했던 값과 맞춘 뒤 `python3 tools/novel-drive.py unpack <파일> <작품 폴더>`로 푼다.
 
 ### 조각 업로드 (Drive 연결 도구가 내용을 호출 안에 직접 받는 경우)
@@ -130,7 +140,7 @@ inkos-agent wait --job $JOB --timeout 90     # 브리지 1.2: 항상 exit 0, 첫
 `unpack`은 각 파일의 현재 판 스냅샷을 `source/`의 같은 파일에서 다시 만든다(체크섬이 같을 때만).
 
 ```
-python3 tools/novel-drive.py pack <작품 폴더> <작품ID>_<YYYYMMDD-HHMM>_<마지막 회차>화.tar.gz --resume
+python3 tools/novel-drive.py pack <작품 폴더> <작품ID>_<YYYYMMDD-HHMM>_<마지막 회차>화 --resume   # .tar.xz (lzma가 없으면 .tar.gz)
 ```
 
 같은 작품(2화)의 `--resume` 압축본: 47,685바이트(base64 63,580자). 빈 폴더에 풀면 `inkos status` 출력이 원래 프로젝트와 같다(경로만 다름).
@@ -164,7 +174,9 @@ Drive 연결 도구(`create_file`)는 파일 내용을 base64 문자열로 호�
   4. `chapters/.versions/`(수정 전 원고 판) 빼기: −662바이트로 효과가 거의 없다.
 - 추정(측정 아님): 지금 방식(gzip)으로는 회차당 30KB 안팎씩 늘 수 있어 10화 무렵 300KB 안팎이 된다. 보관 기본 경로인 파일 건네기에는 문제가 없고, Drive 조각(12,000바이트)으로는 25조각을 넘는다.
 
-#### 6단계 조사와 지침안 (2026-10-25 측정, 승인 전 — 적용하지 않음)
+#### 6단계 조사와 지침안 (2026-10-25 측정)
+
+7단계에서 적용함: 2(xz, `pack` 기본값)와 3(회차별 원고 업로드 — 대화형은 질문 대기 전 압축본 전체 유지, 일괄만 원고 `.md`). 위 "원고 보관 지침"이 현재 규칙이다.
 
 1. 감사 인용(3안, 채택·적용됨): 근거(`sourceRefs`)는 줄 범위로 제출되고 엔진이 그 범위의 본문 전체를 인용으로 저장한다(`models/observation.ts` `resolveObservationSources`).
    그래서 규칙은 "문제를 보여 주는 줄만 범위로 고른다"로 적었다. 같은 3화 기준 `index.json` 원래 크기 72,250 → 26,280바이트(−64%).
@@ -226,23 +238,23 @@ Drive API 주소는 `oauth2.googleapis.com`, `www.googleapis.com`이다. 네트�
 - 환경 설정의 **Setup script**에 `sh tools/setup-cloud.sh`를 넣는다. 원고 보관은 이 세션의 Google Drive 연결(커넥터)로 한다. OAuth 동기화를 쓸 때만 `INKOS_GDRIVE_*` 비밀값을 넣는다.
 - 집필·검수는 `.claude/agents`의 `inkos-writer`·`inkos-reviewer` 서브에이전트를 쓴다(검수는 집필한 서브에이전트와 다른 서브에이전트가 맡는다).
 - `inkos-agent wait`는 일반 Bash 호출(`--timeout 90`)로 반복한다. 작업 자체는 `job start`로 이미 백그라운드에서 돈다.
-- 세션이 오래 쉬면 컨테이너가 회수되어 진행 중인 작업과 브리지 요청이 사라진다. 그래서 원고 보관 지침대로 회차가 끝날 때마다 압축본을 Drive에 올린다.
+- 세션이 오래 쉬면 컨테이너가 회수되어 진행 중인 작업과 브리지 요청이 사라진다(6단계에서 실제로 겪음). 그래서 원고 보관 지침대로 질문 대기 전·회차 끝에 Drive 연결 도구로 올린다.
 - 작품 폴더를 `<저장소>/novel`에 두면 Claude 앱에서 원고 파일을 열어 볼 수 있다.
 
 ## Codex 클라우드
 
 - 환경의 **Setup script**에 `tools/inkos-agent-bridge/setup/codex-cloud-setup.sh` 내용을 넣는다(설치는 setup 단계에서 인터넷으로, 작업 중에는 인터넷·모델 API 불필요).
-  단, Drive 보관을 쓰려면 작업 중에도 `oauth2.googleapis.com`, `www.googleapis.com` 접속이 허용돼야 한다.
-- Codex는 저장소 루트의 `AGENTS.md`를 읽는다. 작품 프로젝트에도 `install.sh`가 `AGENTS.md`를 복사한다. 첫 지시: "novel/AGENTS.md를 읽고 따라라."
+  Drive 보관은 Codex 환경의 Google Drive 연결 도구로 한다(원고 보관 지침). OAuth `push`를 쓸 때만 작업 중 `oauth2.googleapis.com`, `www.googleapis.com` 접속이 필요하다.
+- 저장소 루트에는 `AGENTS.md`가 없다. `install.sh`가 작품 프로젝트에 `AGENTS.md`(브리지 지침)를 복사하므로 첫 지시는 "novel/AGENTS.md를 읽고 따라라."
 - 서브에이전트가 없으면 집필과 검수를 별도 패스로 나눈다. 검수 요청은 집필 때의 기억이 아니라 요청 프롬프트의 원고를 다시 읽고 답한다.
-- 결과가 PR/브랜치로 남는 것은 코드 변경뿐이다. 원고는 Drive `push`로 남긴다.
+- 결과가 PR/브랜치로 남는 것은 코드 변경뿐이다. 원고는 원고 보관 지침대로 Drive 연결 도구로 남긴다.
 
 ## Grok봇
 
 - Grok이 같은 컴퓨터에서 셸과 백그라운드 프로세스를 쓸 수 있어야 한다(채팅만 되는 Grok은 InkOS를 돌릴 수 없다).
 - 첫 지시: "tools/inkos-agent-bridge/GROK.md와 AGENTS.md를 읽고 따라라. 먼저 `sh tools/setup-cloud.sh`를 실행해라."
 - 서브에이전트가 셸을 못 쓰면 메인이 대신 `claim`/`reply`한다. 검수는 새 패스에서 원고를 다시 읽고 답한다.
-- 로컬 컴퓨터라면 원고가 남아 있으므로 Drive 보관은 백업 용도다(`push`만 주기적으로).
+- 로컬 컴퓨터라면 원고가 남아 있으므로 Drive 보관은 백업 용도다(원고 보관 지침대로 Grok의 Drive 연결 도구로).
 
 ## 알려진 제약
 
