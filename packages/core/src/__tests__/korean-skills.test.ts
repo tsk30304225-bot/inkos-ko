@@ -122,6 +122,27 @@ describe("Korean skill layer", () => {
     }
   });
 
+  it("gives Korean review criteria to ko script and explainer artifact reviews", async () => {
+    const client = { defaults: { maxTokens: 4096 } } as unknown as Parameters<typeof prepareWorkerMessages>[0]["client"];
+    const cases = [
+      ["ko", "script", "artifact-method", ["# 한국어 원고 검수", "# 검수 기준표", "등급을 낮추지 않는다"], []],
+      ["ko", "script", "writer", [], ["# 한국어 원고 검수"]],
+      ["en", "script", "artifact-method", [], ["# 한국어 원고 검수", "등급을 낮추지 않는다"]],
+      ["zh", "script", "artifact-method", [], ["# 한국어 원고 검수"]],
+      ["ko", "explainer-script", "artifact-method", ["# 설명 영상 검수 질문", "등급을 낮추지 않는다", "인용은 해당 문장만"], ["# 한국어 원고 검수"]],
+    ] as const;
+    for (const [language, profileId, worker, present, absent] of cases) {
+      const root = await projectWith(language);
+      try {
+        await saveWorkManifest(root, createWorkManifest({ id: "work", title: "work", profileId, language }));
+        const messages = await prepareWorkerMessages({ client, projectRoot: root, bookId: "work" }, [{ role: "user", content: "review this artifact" }], 4096, worker);
+        const prompt = messages.map((message) => message.content).join("\n");
+        for (const text of present) expect(prompt.includes(text), `${language} ${profileId} ${worker} has ${text}`).toBe(true);
+        for (const text of absent) expect(prompt.includes(text), `${language} ${profileId} ${worker} lacks ${text}`).toBe(false);
+      } finally { await rm(root, { recursive: true, force: true }); }
+    }
+  });
+
   it("maps genre values and Korean names to genre references", () => {
     expect(resolveKoreanGenre("light-martial")).toBe("light-martial");
     expect(resolveKoreanGenre("무협")).toBe("light-martial");
