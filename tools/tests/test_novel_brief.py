@@ -105,7 +105,7 @@ check("author choices come from the recorded design answers",
       data["authorChoices"] == ["로맨스 비중: 곁가지(감정선만)", "폭력 수위: 결과 중심, 잔혹 묘사 없음"], str(data["authorChoices"]))
 r = run("next", str(work))
 check("the briefing ends with plan, hook choices and direct instruction",
-      "[선택 1] 3화 전개\n  1) 계획대로 진행 — 장터 싸움에서 손을 덴다. (추천)\n  2) hook 진전 — 상단의 재방문\n  3) H02 진전 — 맹세의 이유\n 기타) 직접 지시" in r.stdout, r.stdout)
+      "[선택 1] 3화 전개\n  1) 계획대로 진행 — 장터 싸움에서 손을 덴다. (추천)\n  2) hook 진전 — 방향: 상단의 재방문\n  3) H02 진전 — 방향: 맹세의 이유\n 기타) 직접 지시" in r.stdout, r.stdout)
 
 check("design hooks planned for this chapter are listed with their plan clause, not the payoff",
       data["plannedHooks"] == ["H05 (mystery) — 심기 3화(낡은 쪽지)", "H06 (promise) — 3~4화 장터 싸움 장면에서 심는다"], str(data["plannedHooks"]))
@@ -122,11 +122,11 @@ context_file = tmp / "ch3.txt"
 r = run("direct", str(work), "--choice", "2", "-o", str(context_file))
 context = context_file.read_text(encoding="utf-8")
 directions = (story / "author_directions.md").read_text(encoding="utf-8")
-block = re.search(r"## 3화\n- 방식: (.+)\n~~~\n(.*?)~~~\n", directions, re.S)
+block = re.search(r"## 3화\n- 방식: ([^\n]+)\n~~~\n(.*?)~~~\n", directions, re.S)
 check("direct records the chapter with its mode", r.returncode == 0 and block and block.group(1) == "대화형(선택 2)", directions + r.stderr)
 check("the recorded block is byte-identical to the --context file", block and block.group(2) == context, repr(context))
 check("the context carries the choice and the standing author choices",
-      context == "3화 계획에 더해 복선 hook(상단의 재방문)를 한 걸음 진전시킨다. 회수는 하지 않는다.\n"
+      context == "3화 계획에 더해 복선 hook를 한 걸음 진전시킨다(방향: 상단의 재방문). 회수는 하지 않는다.\n"
                  "작가가 정한 선택: 로맨스 비중 = 곁가지(감정선만); 폭력 수위 = 결과 중심, 잔혹 묘사 없음.\n", repr(context))
 r = run("direct", str(work), "--plan")
 check("a chapter is recorded only once", r.returncode != 0 and "이미 기록" in r.stderr, r.stderr)

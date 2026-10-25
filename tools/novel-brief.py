@@ -288,20 +288,31 @@ def open_hooks(src: Path) -> list[dict]:
     return sorted(active, key=lambda hook: (hook.get("lastAdvancedChapter", 0), hook.get("hookId", "")))
 
 
+def chapter_clause(hook: dict, chapter: int) -> str | None:
+    """The notes clause that plans something for this chapter ("1화", "1~2화"), if any."""
+    for clause in re.split(r"[,，]\s*|[.。]\s+", hook.get("notes", "")):
+        if any(int(m.group(1)) <= chapter <= int(m.group(2) or m.group(1))
+               for m in re.finditer(r"(?<![\d~])(\d+)(?:~(\d+))?화", clause)):
+            return clause.strip()
+    return None
+
+
 def planned_hooks(src: Path, chapter: int) -> list[tuple[dict, str]]:
-    """Design-time (deferred) hooks whose notes plan something for this chapter ("1화", "1~2화"),
-    each with the notes clause that names the chapter (not the payoff, so nothing is revealed early)."""
+    """Design-time (deferred) hooks whose notes plan something for this chapter, each with that
+    clause (not the payoff, so nothing is revealed early)."""
     hooks = (read_json(src / "story" / "state" / "hooks.json") or {}).get("hooks", [])
     planned = []
     for hook in hooks:
-        if hook.get("status") != "deferred":
-            continue
-        for clause in re.split(r"[,，]\s*|[.。]\s+", hook.get("notes", "")):
-            if any(int(m.group(1)) <= chapter <= int(m.group(2) or m.group(1))
-                   for m in re.finditer(r"(?<![\d~])(\d+)(?:~(\d+))?화", clause)):
-                planned.append((hook, clause.strip()))
-                break
+        clause = chapter_clause(hook, chapter) if hook.get("status") == "deferred" else None
+        if clause:
+            planned.append((hook, clause))
     return planned
+
+
+def hook_step(hook: dict, chapter: int) -> str:
+    """What an open hook should do now: this chapter's planned step, else its payoff as the direction."""
+    clause = chapter_clause(hook, chapter)
+    return clause if clause else "방향: " + short(hook.get("expectedPayoff", "") or hook.get("notes", ""), 60)
 
 
 def volume_beat(src: Path, chapter: int) -> str:
@@ -327,8 +338,8 @@ def briefing(src: Path) -> dict:
     if beat != NONE:
         choices.append({"label": f"계획대로 진행 — {beat}", "context": f"{chapter}화는 권 지도 계획대로 쓴다: {beat}"})
     lead = f"{chapter}화 계획에 더해 " if beat != NONE else f"{chapter}화에서 "
-    candidates = [(hook, f"{hook['hookId']} 진전 — " + short(hook.get("expectedPayoff", "") or hook.get("notes", ""), 60),
-                   f"{lead}복선 {hook['hookId']}({short(hook.get('expectedPayoff', '') or hook.get('notes', ''), 60)})를 한 걸음 진전시킨다. 회수는 하지 않는다.")
+    candidates = [(hook, f"{hook['hookId']} 진전 — {hook_step(hook, chapter)}",
+                   f"{lead}복선 {hook['hookId']}를 한 걸음 진전시킨다({hook_step(hook, chapter)}). 회수는 하지 않는다.")
                   for hook in hooks]
     # A planned hook whose clause shares a word with the beat is already part of "계획대로 진행".
     candidates += [(hook, f"{hook['hookId']} 심기 — {clause}",

@@ -357,3 +357,11 @@ names, scene order, or signature combinations" 원칙을 그대로 지킨다). �
   - ko CLI 문구: 파이프라인 진행·경고 로그 30곳(`utils/korean-log-messages.ts`, 호출부는 그대로), `N자`, revise 출력, 응답 대기 줄, 알림 제목 `N화`. en 복사본으로 영어 출력이 그대로임을 확인.
   - 압축본 크기 조사(적용 없음): 2화 49,008 → 3화 84,636 → 4화 118,446바이트. 원인은 감사 인용문과 스냅샷 교체, gzip 창 한계(xz면 3화 43,200). RUNTIME에 방법 4가지와 측정값.
   - 시험(프록시 변수 제거): core 755 / studio 307 / cli 101 = 1,163 통과(+7), 브리지 33/33, Drive 31/31. 요청 19건 모두 delivered.
+- 2026-10-25 (`claude/eeum-n0rsol`): **6단계 `(stage 6)` — 작가 선택 방식(대화형·일괄).** 감독 승인: 4단계. 근거는 `korean-port/verification/stage-6.md`.
+  - `tools/novel-brief.py`: `interview`(브리프·설계 미정 항목 중 답이 없는 것만), `next`(파일에서 뽑는 다음 화 브리핑, 없는 칸은 "없음"), `direct`(`--context` 원문을 쓰고 `source/story/author_directions.md`에 그대로 기록). 시험 27/27.
+  - 지침: RUNTIME "작가 선택", 브리지 AGENTS, CLAUDE.md. 보관 정정: 실제 작품은 회차 완료 시 연결 도구로 Drive, 시험 작품(`test-`)은 내보내지 않음. OAuth는 "선택, 앱이 쓰지 않음".
+    감사 인용: 근거 줄 범위를 문제 문장 줄만으로(엔진이 범위 전체를 인용으로 저장함을 확인).
+  - 시험 작품 `test-6-murim-…`: 인터뷰(7문항, 두 번에 나눠 답) → 생성 → 설계 후 질문 3개(서술 인칭은 브리프에서 정해 묻지 않음) → 1화 브리핑(선택 2) → 1화 2,991자 → 일괄 2·3화 2,943·2,886자.
+    세 회차 모두 상태 반영, 상태 미반영 경고 0. `--context` 원문이 기획·초고 프롬프트에 들어감, 지시 기록과 `--context-file` 바이트 일치. 요청 23건(delivered 22, 재시작으로 abandoned 1).
+  - 조사(적용 안 함): 인용 규칙으로 3화 `index.json` 72,250 → 26,280바이트, 압축본 전체는 상태가 커서 비슷(85,280). xz는 3~4화 gzip의 44~51%. 회차별 원고 업로드 지침안과 조각 수 추정 → RUNTIME.
+  - 시험(프록시 변수 제거): core 756 / studio 307 / cli 101 = 1,164 통과, 브리지 33/33, Drive 31/31, novel-brief 27/27.
