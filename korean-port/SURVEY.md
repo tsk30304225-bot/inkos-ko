@@ -164,6 +164,75 @@ studio `api/server.ts:196,934,1138,3979,6473`. C안은 로더 내부에서 `proj
   참고: 공백 제외 3,000자는 대략 공백 포함 3,600~3,800자다(어절 평균 길이로 추정한 값, 실측 아님).
 - Studio 첫 실행 화면에 ko 카드를 맨 앞에 두는 등 **zh/en 사용자에게도 보이는 화면 변경**을 허용할지(원칙 1과 충돌). 허용하지 않으면 ko 카드를 맨 뒤에 추가만 한다.
 
+## 6. 원본 수정 범위 (원본 업데이트를 받을 때의 충돌 범위, 2026-10-25 측정)
+
+측정: `git diff --numstat 53adac4 HEAD -- packages`(원본 master 기준, 작업 트리 기준 커밋 `(stage 4-1 fix)`). 앞선 보고의 "분기 몇 줄씩"은 틀린 표현이었다
+(감독 지적). 실제로는 아래와 같고, 대부분은 1단계에서 그대로 적용한 기존 패치의 몫이다.
+
+| 구분 | 파일 수 | 줄 |
+| --- | --- | --- |
+| 원본 파일 수정(충돌 가능) — 대상 밖 정리 전 | 87 | +801 / −482 |
+| 원본 파일 수정(충돌 가능) — **현재** | **79** | **+773 / −450** |
+| 새 파일(충돌 없음: `korean-*.ts`, `skills-ko/`, 한국어 테스트 등) | 43 | +2,785 |
+
+현재 원본 파일 수정의 영역별 분포:
+
+| 영역 | 파일 | 줄 |
+| --- | --- | --- |
+| `core/src/agents` | 17 | +199 / −161 |
+| `core/src/utils` | 9 | +62 / −28 |
+| `cli/src/commands` | 7 | +63 / −20 |
+| `core/src/pipeline` | 6 | +84 / −51 |
+| `core/src/harness` | 6 | +24 / −10 |
+| `core/src/models` | 4 | +4 / −4 |
+| `core/src/interaction` | 4 | +11 / −11 |
+| `studio/src/pages` | 3 | +47 / −15 |
+| `studio/src/api` | 3 | +29 / −17 |
+| `core/src/state` | 3 | +35 / −18 |
+| `core/src/agent` | 2 | +33 / −32 |
+| `studio/src/shared` | 1 | +1 / −1 |
+| `studio/src/lib` | 1 | +7 / −3 |
+| `studio/src/hooks` | 1 | +9 / −3 |
+| `studio/src/App.tsx` | 1 | +5 / −0 |
+| `core/src/skills` | 1 | +7 / −3 |
+| `core/src/references` | 1 | +1 / −1 |
+| `core/src/prompts` | 1 | +35 / −31 |
+| `core/src/llm` | 1 | +3 / −3 |
+| `core/src/index.ts` | 1 | +10 / −1 |
+| `core/src/forecast` | 1 | +2 / −1 |
+| `core/package.json` | 1 | +2 / −1 |
+| `cli/src/tui` | 1 | +22 / −20 |
+| `cli/src/project-bootstrap.ts` | 1 | +2 / −2 |
+| `cli/src/program.ts` | 1 | +3 / −0 |
+| `cli/src/localization.ts` | 1 | +73 / −13 |
+
+수정이 큰 파일: `cli/src/localization.ts`(+73/−13, ko 문구), `core/src/pipeline/runner.ts`(+41/−13), `core/src/prompts/short-fiction.ts`(+35/−31),
+`core/src/agent/agent-tools.ts`(+31/−30), `core/src/agents/script-storyboard.ts`(+31/−27), `core/src/agents/writer.ts`(+30/−23),
+`studio/src/pages/BookCreate.tsx`(+29/−7), `core/src/agents/architect.ts`(+27/−24). 줄 수의 대부분은 `"zh" | "en"` 유니온에 `"ko"`를 더하거나
+`=== "en"`을 `!== "zh"`로 바꾼 한 줄 변경이라 충돌은 넓게 흩어지지만 각각은 작다. 원본 업데이트를 받을 때는 이 79개 파일을 대조한다.
+
+### 대상 밖 변경 정리
+
+대상 기능(장편·단편·대본·설명 영상·내보내기) 밖인 **인터랙티브 플레이, 인터랙티브 필름, 서사 예측**의 패치 변경을 원본으로 되돌렸다.
+
+| 파일 | 처리 |
+| --- | --- |
+| `core/src/play/play-agents.ts`, `play-runner.ts`, `play-store.ts` | 원본으로 되돌림 |
+| `core/src/agent/film-authoring-tools.ts` | 원본으로 되돌림 |
+| `core/src/forecast/agent.ts`, `prompts.ts`, `schema.ts` | 원본으로 되돌림 |
+| `studio/src/components/chat/NarrativeForecastPreview.tsx` | 원본으로 되돌림 |
+| `core/src/forecast/context-builder.ts` | 1줄만 남김: 책 언어를 넘길 때 `upstreamLanguage()` |
+
+이 기능들에 ko가 넘어가는 지점 4곳(`agent-tools.ts` 플레이 세계 생성, `production-capabilities.ts` 필름 도구, `studio/src/api/server.ts` 필름 구조 도구,
+`forecast/context-builder.ts`)은 `utils/korean-language.ts`의 `upstreamLanguage()`(ko→en)로 명시적으로 바꿔 넘긴다. 동작은 기존 패치의
+`!== "zh"`와 같다(ko 작품의 플레이·필름·예측은 영어 경로). 한국어 플레이 세계는 `language: "en"`으로 저장된다. 한국어화가 필요해지면 그때 별도 단계로 다룬다.
+
+되돌리지 않은 것과 이유:
+- Studio 화면 일부(`App.tsx`, `pages/*`, `hooks/use-i18n.ts`, `lib/app-language.ts`, `api/book-create.ts`): 사용자 결정(화면 한국어·영어 선택)에 해당하고,
+  ko 작품 생성 경로(`BookCreate.tsx`, `server.ts`)가 쓰고 있다.
+- 단편(`prompts/short-fiction.ts`, `agents/short-fiction.ts`, `pipeline/short-fiction-runner.ts`): 계획서 2단계 스킬 우선순위(`inkos-short-writing`)에 들어 있다.
+- `interaction/*`, `state/*`, `utils/*`: 장편 저장·내보내기 경로라 대상 안이다.
+
 ## 부록 A. core agents·prompts·harness·forecast
 
 

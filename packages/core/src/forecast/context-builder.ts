@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { upstreamLanguage } from "../utils/korean-language.js";
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { readCharacterContext, readStoryFrame, readVolumeMap } from "../utils/outline-paths.js";
@@ -26,7 +27,7 @@ export interface ForecastContextSections {
 export interface ForecastContext {
   readonly bookId: string;
   readonly bookTitle: string;
-  readonly language: "zh" | "en" | "ko";
+  readonly language: "zh" | "en";
   readonly baseChapter: number;
   readonly contextFingerprint: string;
   readonly sections: ForecastContextSections;
@@ -192,10 +193,10 @@ export function renderForecastContextMarkdown(context: ForecastContext): string 
   return blocks.join("\n\n");
 }
 
-async function readBookConfig(bookDir: string): Promise<{ readonly title: string; readonly language: "zh" | "en" | "ko" }> {
+async function readBookConfig(bookDir: string): Promise<{ readonly title: string; readonly language: "zh" | "en" }> {
   const raw = await readFile(join(bookDir, "book.json"), "utf-8");
   const parsed = BookConfigSchema.parse(JSON.parse(raw));
-  return { title: parsed.title, language: parsed.language ?? "zh" };
+  return { title: parsed.title, language: upstreamLanguage(parsed.language) ?? "zh" };
 }
 
 /**

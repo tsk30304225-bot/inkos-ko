@@ -31,7 +31,7 @@ export interface PlayOpeningStateLike {
     readonly sceneText: string;
     readonly suggestedActions: readonly string[];
     readonly context: string;
-    readonly language?: "zh" | "en" | "ko";
+    readonly language?: "zh" | "en";
     readonly worldPremise?: string;
   }) => Promise<PlayMutationInput>;
 }
@@ -46,7 +46,7 @@ export interface PlayTurnLike {
     readonly context: string;
     readonly replayContext?: string;
     readonly mode: "open" | "guided";
-    readonly language?: "zh" | "en" | "ko";
+    readonly language?: "zh" | "en";
     readonly worldPremise?: string;
     readonly currentSuggestedActions?: readonly string[];
   }) => Promise<PlayTurnResult>;
@@ -156,7 +156,7 @@ export class PlayRunner {
     const language = world.language;
     const action: PlayActionIntent = {
       actionKind: "look",
-      intent: language !== "zh" ? "Seed the opening state for the first playable scene." : "播种第一幕已成立的开场状态。",
+      intent: language === "en" ? "Seed the opening state for the first playable scene." : "播种第一幕已成立的开场状态。",
       manner: "",
       risk: "",
       ambiguity: "",
@@ -181,7 +181,7 @@ export class PlayRunner {
     if (mutation.blocked || !isOpeningGraphReady(seededGraph)) {
       throw new PlayOpeningSeedError(
         mutation.blockedReason
-          || (language !== "zh"
+          || (language === "en"
             ? "The opening scene did not produce a usable player/world graph. Retry world creation."
             : "开场没有生成可用的玩家与世界图谱，请重试创建互动世界。"),
       );
@@ -441,7 +441,7 @@ export class PlayRunner {
 
   private async buildContextBrief(
     sceneBrief: string,
-    language: "zh" | "en" | "ko",
+    language: "zh" | "en",
     world: PlayWorld,
     intent: string,
   ): Promise<string> {
@@ -525,10 +525,10 @@ function isOpeningGraphReady(graph: PlayGraphSnapshot | null): boolean {
 function buildReplayContext(input: {
   readonly originalInput: string;
   readonly replacementInput?: string;
-  readonly language: "zh" | "en" | "ko";
+  readonly language: "zh" | "en";
 }): string {
   const replacement = input.replacementInput?.trim();
-  if (input.language !== "zh") {
+  if (input.language === "en") {
     return [
       "This is a regeneration of the previous turn, not a new next turn.",
       `Original player input: ${input.originalInput}`,
@@ -550,12 +550,12 @@ function buildReplayContext(input: {
   ].filter(Boolean).join("\n");
 }
 
-function renderPlayWorldContext(world: PlayWorld | null | undefined, language: "zh" | "en" | "ko"): string {
+function renderPlayWorldContext(world: PlayWorld | null | undefined, language: "zh" | "en"): string {
   if (!world) return "";
   const premise = world.premise?.trim();
   const worldContract = world.worldContract?.trim();
   const visualContract = world.visualContract?.trim();
-  const isEn = language !== "zh";
+  const isEn = language === "en";
   const blocks = [
     premise
       ? `${isEn ? "Opening premise (current state supersedes completed objectives and changed facts)" : "开场前提（已完成目标和已变化事实以当前状态为准）"}:\n${premise}`
@@ -591,8 +591,8 @@ function requireRestorableGraphDB(db: PlayReducerDB): PlayReducerDB & {
   };
 }
 
-function renderEntity(entity: PlayEntity, language: "zh" | "en" | "ko"): string {
-  const isEn = language !== "zh";
+function renderEntity(entity: PlayEntity, language: "zh" | "en"): string {
+  const isEn = language === "en";
   const detail = [entity.summary, entity.status ? `${isEn ? "status" : "状态"}: ${entity.status}` : ""]
     .filter(Boolean)
     .join(isEn ? "; " : "；");

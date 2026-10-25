@@ -6,7 +6,7 @@ import { readChapterHeading, splitChapters } from "../utils/chapter-splitter.js"
 import { chapterDocumentBody, chapterDocumentHeading, renderChapterDocument } from "../utils/chapter-document.js";
 import { deriveBookIdFromTitle } from "../utils/book-id.js";
 import { countChapterLength, resolveLengthCountingMode } from "../utils/length-metrics.js";
-import { chapterLabel, normalizeWritingLanguage, pickByLanguage, promptLanguage } from "../utils/korean-language.js";
+import { chapterLabel, normalizeWritingLanguage, pickByLanguage, promptLanguage, upstreamLanguage } from "../utils/korean-language.js";
 import { renderChapterSummariesProjection, renderCurrentStateProjection, renderHooksProjection } from "../state/state-projections.js";
 import { formatShortFictionChapterHeading, shortFictionDefaultChapterLength } from "../agents/short-fiction.js";
 import { unresolvedStateObservation } from "../pipeline/chapter-state-recovery.js";
@@ -70,6 +70,9 @@ describe("Korean edition stage 1", () => {
     expect(pickByLanguage("ko", { zh: "中", en: "en", ko: "한" })).toBe("한");
     expect(pickByLanguage("ko", { zh: "中", en: "en" })).toBe("en");
     expect(chapterLabel("ko", 2)).toBe("제2화");
+    expect(upstreamLanguage("ko")).toBe("en");
+    expect(upstreamLanguage("zh")).toBe("zh");
+    expect(upstreamLanguage(undefined)).toBeUndefined();
   });
 
   it("renders Korean state projections and keeps zh/en headings", () => {

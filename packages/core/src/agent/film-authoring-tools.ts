@@ -233,7 +233,7 @@ const ReviseNodeParams = Type.Object({
   }),
 });
 
-export type FilmAuthoringLanguage = "zh" | "en" | "ko";
+export type FilmAuthoringLanguage = "zh" | "en";
 
 function nodeSystemPrompt(language: FilmAuthoringLanguage, revision = false): string {
   const operation = language === 'en'
@@ -388,8 +388,8 @@ export function createDraftStructureTool(
         return textResult(`Reference topology applied: ${next.nodes.length} nodes; ${missingSceneNodeIds.length} scenes still need generation.`,graphUpdatedDetails(rev,{skillIds:deps.skillIds?.()??[],referenceTopology:{workId:params.referenceWorkId,sourceHash},missingSceneNodeIds}));
       }
       const context = graph ? buildFilmAuthoringContext(graph) : "(empty graph)";
-      const systemPrompt = language !== "zh" ? STRUCT_SYSTEM_EN : STRUCT_SYSTEM_ZH;
-      const userPrompt = language !== "zh"
+      const systemPrompt = language === "en" ? STRUCT_SYSTEM_EN : STRUCT_SYSTEM_ZH;
+      const userPrompt = language === "en"
         ? `${context}\n\nSkeleton instruction: ${params.instruction}`
         : `${context}\n\n骨架指令：${params.instruction}`;
       const requirements=await readFilmRequirements(projectRoot,projectId);

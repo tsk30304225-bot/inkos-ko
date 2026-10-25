@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { upstreamLanguage } from "@actalk/inkos-core";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { streamSSE } from "hono/streaming";
@@ -1448,7 +1449,7 @@ async function executeConfirmedProductionAction(args: {
     const deps = filmLLMDepsFromClient(agentCtx.client, agentCtx.model, {
       activatedSkills: () => profileSkills("interactive-film"),
     });
-    tool = createDraftStructureTool(args.root, projectId, deps, lang);
+    tool = createDraftStructureTool(args.root, projectId, deps, upstreamLanguage(lang));
     params = {
       instruction: payload?.instruction?.trim() || args.instruction,
     };

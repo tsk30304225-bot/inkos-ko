@@ -1,4 +1,5 @@
 import { createProfileWorkTools } from "./tools/work-creation.js";
+import { upstreamLanguage } from "../utils/korean-language.js";
 import { EXPLAINER_SCRIPT_PROFILE_ID, isKoreanProjectSync } from "./korean-profiles.js";
 import { createExplainerScriptTool } from "../agent/korean-explainer-tool.js";
 import {existsSync} from "node:fs";
@@ -346,7 +347,7 @@ export function createProductionCapabilityRegistry(
             ),
           },
         ),
-        language: lang,
+        language: upstreamLanguage(lang),
       }).map((tool) => tool.name==='inspect_story_graph' ? readAction(tool) : writeAction(tool))
     : scopedProduction(createInteractiveFilmCreationTool(environment.pipeline, environment.projectRoot, {
         actionPayload: environment.confirmedCreation ? environment.actionPayload : undefined,

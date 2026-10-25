@@ -13,6 +13,17 @@ export function promptLanguage(language: WritingLanguage | undefined): "zh" | "e
   return language === "en" || language === "ko" ? "en" : "zh";
 }
 
+/**
+ * For subsystems outside the Korean edition's scope (interactive play,
+ * interactive film, narrative forecast), which stay upstream zh/en code: ko
+ * takes the English path, as the earlier patch's `!== "zh"` did.
+ */
+export function upstreamLanguage(language: WritingLanguage): "zh" | "en";
+export function upstreamLanguage(language: WritingLanguage | undefined): "zh" | "en" | undefined;
+export function upstreamLanguage(language: WritingLanguage | undefined): "zh" | "en" | undefined {
+  return language === "ko" ? "en" : language;
+}
+
 /** Keep ko instead of folding it into zh; unknown values keep upstream's zh fallback. */
 export function normalizeWritingLanguage(language: unknown): WritingLanguage {
   return language === "ko" ? "ko" : language === "en" ? "en" : "zh";

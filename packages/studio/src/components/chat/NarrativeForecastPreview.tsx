@@ -76,7 +76,7 @@ export function getNarrativeForecastPreviewDetails(exec: ToolExecution): Narrati
 export function buildNarrativeForecastSelectionInstruction(
   forecastId: string,
   branchId: string,
-  language: "zh" | "en" | "ko",
+  language: "zh" | "en",
 ): string {
   return language === "zh"
     ? `请调用 select_narrative_branch，选择推演 ${forecastId} 的 ${branchId}。只保存候选计划，不修改正文、大纲或正史状态。`
@@ -85,7 +85,7 @@ export function buildNarrativeForecastSelectionInstruction(
 
 export function buildNarrativeForecastRecheckInstruction(
   forecastId: string,
-  language: "zh" | "en" | "ko",
+  language: "zh" | "en",
 ): string {
   return language === "zh"
     ? `请调用 get_narrative_forecast，重新核验推演 ${forecastId} 是否已经过期。`

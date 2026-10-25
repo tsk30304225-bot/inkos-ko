@@ -1,4 +1,5 @@
 import { createBuiltInWorkProfileRegistry } from "../harness/builtin-profiles.js";
+import { upstreamLanguage } from "../utils/korean-language.js";
 import { Type, type Static } from "@mariozechner/pi-ai";
 import type { AgentTool, AgentToolResult, AgentToolUpdateCallback } from "@mariozechner/pi-agent-core";
 import type { PipelineRunner } from "../pipeline/runner.js";
@@ -2275,7 +2276,7 @@ export function createPlayStartTool(
             visualContract: visualContract?.trim() ?? "",
             mode: playMode ?? params.mode ?? "open",
             choiceCount:playPayload?.choiceCount??params.choiceCount??((playMode??params.mode)==='guided'?2:undefined),
-            language: playLanguage,
+            language: upstreamLanguage(playLanguage),
           });
       await store.ensureRun(world.id, runId);
 
