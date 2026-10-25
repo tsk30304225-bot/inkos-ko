@@ -1019,7 +1019,7 @@ function slugifyAnchor(value: string): string {
     return value
       .trim()
       .toLowerCase()
-      .replace(/[^a-z0-9\u4e00-\u9fff]+/g, "-")
+      .replace(/[^a-z0-9\u4e00-\u9fff\uac00-\ud7a3]+/g, "-")
       .replace(/^-+|-+$/g, "")
       || "section";
 }
