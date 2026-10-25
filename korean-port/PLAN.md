@@ -318,3 +318,14 @@ names, scene order, or signature combinations" 원칙을 그대로 지킨다). �
   - Drive: 전체 압축본 752KB는 연결 도구(base64 직접 입력)로 올리지 못함. 원고+상태 압축본 `청운객잔-셋째-사환_20261025-1510_2화_원고.tar.gz`(11,430바이트)를 바이너리로 올림, 크기 일치.
   - 시험(프록시 변수 제거): core 748 / studio 307 / cli 94 = 1,149 통과, 브리지 33/33, Drive 25/25.
   - 사용자 확인 필요: 서술 시점을 시험 진행을 위해 3인칭 제한(막삼)으로 정했다(설계에서는 미정).
+- 2026-10-25 (`claude/eeum-n0rsol`): **5-a 보완 후 재실행 `(stage 5-a fix)`.** 감독 판정: 5-a 미완(상태 승계 실패), `57e7695` 승인. 지시 A~D 수행.
+  - `ab694b9` A: 재정산 실패 때 엔진 동작을 SURVEY 7절에 기록(재정산 1회, 미해결이면 원고 저장·상태 버림, 저장되는 흔적은 관찰 코드뿐).
+    한국어 스킬 `state-projection.md`에 "상태 검증의 판정 기준"(본문과의 사실 충돌만 재정산 사유, 엔진 정규화 값은 모순 아님, 실제 사례), review-matrix에서 참조.
+    브리지 `inkos-reviewer.md`·`AGENTS.md`에 같은 한 줄. ko `write next`·`status`에 상태 미적용 회차 경고(원본에는 표시가 없어 새 파일 `cli/src/korean-state-notice.ts`).
+  - `ce1a9c5` B: `slugifyAnchor` 정규식에 한글 음절(가-힣) 추가, 테스트 2개(수정 전 실패 확인). SURVEY 8절 "원본 결함 수정" 목록(`0d1465d` 포함).
+  - `42352b9` C: 전체 압축본 752KB 구성 측정(`.inkos/harness.sqlite` 실행 기록이 압축 후 607KB) → `RUNTIME.md`. `pack --resume`(설정·작업 목록·source/·최근 스냅샷 2개),
+    `unpack`이 현재 판 스냅샷을 source/에서 다시 만듦. Drive 시험 28/28.
+  - D 재실행(새 작품 "철쭉골 대장간 막내", `novel-5a2/`): 1화 뒤 `lastAppliedChapter 1`·회차 요약·현재 상태 30행·복선 이동 저장, 2화가 1화 상태의 사실을 이어받음(사례 2개),
+    이야기 틀 9절 모두 프롬프트에, `--resume` 압축본(48,501바이트)을 빈 폴더에 풀어 `inkos status` 동일(경로만 다름), Drive에 4조각으로 올림(크기 일치).
+    요청 16건 모두 delivered. 분량 1화 2,897 / 2화 2,880. 근거는 VERIFICATION.md "5-a 보완 후 재실행".
+  - 시험(프록시 변수 제거): core 751 / studio 307 / cli 98 = 1,156 통과, 브리지 33/33, Drive 28/28.

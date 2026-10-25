@@ -207,3 +207,125 @@ inkos-agent job start -- write next 청운객잔-셋째-사환 --count 1
 - 대신 원고 2화와 상태 파일(`current_state.md`, `chapter_summaries.md`, `pending_hooks.md`, `state/manifest.json`)만 묶은
   `청운객잔-셋째-사환_20261025-1510_2화_원고.tar.gz`(11,430바이트)를 바이너리(application/gzip)로 "Inkos ko" 폴더에 올렸다.
   Drive가 돌려준 크기 11,430 일치. 바이트 단위 대조(체크섬)는 연결 도구가 제공하지 않아 하지 못했다.
+
+## 2026-10-25 — 5-a 보완 후 재실행 (라이트 무협 2화, 새 작품)
+
+5-a 보완(`ab694b9` 상태 검증 기준·상태 미적용 경고, `ce1a9c5` 한글 앵커, `42352b9` `pack --resume`) 뒤 같은 세션에서 새 프로젝트 `novel-5a2/`(git 무시)로 다시 실행했다.
+새 writer·reviewer 서브에이전트(1차와 다른 인스턴스). reviewer는 갱신된 `inkos-reviewer.md`와 한국어 스킬을 읽었다. API 키 없음.
+
+```
+inkos-agent job start -- book create --title "철쭉골 대장간 막내" --genre light-martial --lang ko --target-chapters 30 --chapter-words 3000
+→ j-20261025-154008-f38606d5 exit=0  "작품을 생성했습니다: 철쭉골-대장간-막내"
+inkos-agent job start -- write next 철쭉골-대장간-막내 --count 1
+→ j-20261025-154732-01f21412 exit=0  1화 "금 간 칼날" 분량: 2897자, 검수 의견: 7건
+→ j-20261025-155937-6959dbd5 exit=0  2화 "굴대 하나" 분량: 2880자, 검수 의견: 6건
+```
+
+설계: 인물 `roles/major` 7명(모루·편재옥·단석·여울·육현보·마척·설하람), `roles/minor` 3명(설경원·홍 좌수·주담), 복선 8개(H01~H08).
+설계 요청 프롬프트의 장르 문서는 `references/genres/light-martial.md` 하나. `narrativePerson`은 설계에서 미정으로 남았고, 이 시험의 회차만 3인칭 제한(모루)으로 썼다.
+
+### 확인 1 — 1화 뒤 상태가 1화 기준으로 채워짐
+
+1화 상태 검증: 첫 검증 `reconciliationRequired: true`. 지적 2건은 둘 다 본문과의 실제 충돌이었다:
+풀무숨을 "편재옥이 붙인 이름"으로 적음(본문은 "사부님은 그걸 풀무숨이라 불렀다"), "새벽부터"(본문에 그 시각 표시 없음).
+재정산 → 재검증 `false`. 시작 회차 0은 "엔진의 정규화 규칙이지 충돌이 아니다"로 판정해 재정산 사유로 삼지 않았다.
+
+```
+$ cat story/state/manifest.json
+{ "schemaVersion": 2, "language": "ko", "lastAppliedChapter": 1, "projectionVersion": 1 }
+$ chapter_summaries.md
+| 1 | 금 간 칼날 | 모루, 편재옥, 단석, 여울, 육현보 | 모루가 한 달 동안 몰래 친 철쭉쇠 칼날을 개울가에서 … 금이 간다. 금계상단 마차가 마을로 들어온다. …
+$ current_state.md → "> 현재 회차: 1", 사실 행 30개
+$ hooks: H02 progressing 0 1 / H06 progressing 0 1 / hook open 1 1 / 나머지 6개 deferred 0 0
+$ snapshots: 0 1
+```
+
+### 확인 2 — 2화가 1화에만 있는 사실을 이어받음
+
+- 2화 정산 요청(r-20261025-160234-441013d9)의 기준 상태가 1화 상태다: 프롬프트에 `"chapter":1,"currentState"`, 1화 사실 행("흉년에 마을에 돈을 꿔 준 곳" 등)이 들어 있다. 2화 기획 요청에는 현재 상태 사실 28개, 1화 회차 요약(Evidence "Relevant episodic memory"), 복선 9개가 들어갔다.
+- 사례 1. 1화 상태 `| 편재옥 | 모루에게 내린 지시 | 내일 육현보가 오면 모루는 뒤뜰에서 장작을 패라 | 1 | 1 |`
+  → 2화 3·9행 "도끼가 장작 한가운데에 박혔다가 멈췄다." / "뒤뜰과 대장간 앞마당 사이에는 어깨 높이의 흙담 하나뿐이었다. 사부님이 왜 하필 뒤뜰로 보냈는지, 모루는 이제야 알 것 같았다." 2화 정산에서 이 지시는 수행됨으로 만료됐다.
+- 사례 2. 1화 상태 `| 모루의 첫 칼날 | 금이 간 원인에 대한 말 | … 모루는 사부를 따라 물통 물로 …`
+  → 2화 117·119행 "모루는 굴대를 물통 앞까지 들고 갔다가, 멈췄다." / "어제 그 칼날은 물통 물에 넣었다. 그리고 금이 갔다." (굴대를 물 대신 재에 식힘)
+- 2화 감사도 1화 상태 사실과 회차 요약으로 대조해 모순 없음(`CH1-CONTINUITY`). 2화 상태 검증은 첫 판정에서 `false`.
+- 2화 뒤: `lastAppliedChapter: 2`, 회차 요약 1·2화 두 줄, `hook` resolved(1→2), `hook-2` open, 스냅샷 0·1·2.
+
+### 확인 3 — 설계 절이 모두 프롬프트에 들어감
+
+이야기 틀 제목 9개(새 작품은 제목 포함 9절)가 1화 기획 요청에 모두 들어갔고, 1화 맥락 파일에 서로 다른 출처 9개로 기록됐다:
+
+```
+9 story_frame sources
+  story/outline/story_frame.md#철쭉골-대장간-막내-이야기-틀
+  story/outline/story_frame.md#설정-상태
+  story/outline/story_frame.md#전제
+  story/outline/story_frame.md#중심-갈등
+  story/outline/story_frame.md#동기-요약-상세는-인물-카드
+  story/outline/story_frame.md#세계-규칙
+  story/outline/story_frame.md#시점과-정보-공개
+  story/outline/story_frame.md#톤
+  story/outline/story_frame.md#종착-상태-관찰-가능
+```
+1차 작품의 이야기 틀도 수정 후 다시 재면 `story_frame.md 8 sections -> 8 distinct anchors`(수정 전 `-> 1`).
+
+### 확인 4 — `pack --resume` 압축본을 빈 폴더에 풀어 `inkos status` 비교
+
+```
+$ python3 tools/novel-drive.py pack novel-5a2 철쭉골-대장간-막내_20261025-1608_2화.tar.gz --resume
+packed novel-5a2 -> …/철쭉골-대장간-막내_20261025-1608_2화.tar.gz (48501 bytes)
+$ python3 tools/novel-drive.py unpack 철쭉골-대장간-막내_20261025-1608_2화.tar.gz <빈 폴더>/novel
+unpacked 46 files into <빈 폴더>/novel
+$ diff <(원본 inkos status) <(복원본 inkos status)        # --json도 같은 결과
+< InkOS Project: /home/user/inkos-ko/novel-5a2
+> InkOS Project: …/resume-empty-5a2/novel
+```
+복원본 출력: `회차: 2 / 30`, `분량: 5777자 (회당 평균 2889자, 공백 제외)`, `검수 의견: 13건 (2개 회차)`, `상태 마지막 반영: 2화`. 경로 말고 다른 줄은 없다. `write next`는 실행하지 않았다.
+
+### 확인 5 — Drive 연결로 "Inkos ko"에 올림
+
+압축본 48,501바이트(base64 64,668자)는 연결 도구 한 번의 호출에 그대로 넣기에는 길어서(호출 안에 base64를 직접 써야 한다), 같은 압축본을 12,126바이트씩 4조각으로 나눠 바이너리로 올렸다.
+
+| Drive 파일 | Drive 크기 | 로컬 크기 |
+| --- | --- | --- |
+| `철쭉골-대장간-막내_20261025-1608_2화.tar.gz.part1of4` | 12126 | 12126 |
+| `….part2of4` | 12126 | 12126 |
+| `….part3of4` | 12126 | 12126 |
+| `….part4of4` | 12123 | 12123 |
+
+로컬에서 4조각을 이으면 원본과 같다(sha256 `4cff0f1d76b8d14e08156f4dd6fe9c74f80c87c2caf311ee1a67150219495450`).
+받을 때: 4조각을 받아 `cat ….part1of4 ….part2of4 ….part3of4 ….part4of4 > 철쭉골-대장간-막내_20261025-1608_2화.tar.gz` 후 `unpack`.
+Drive 쪽 바이트 대조는 하지 못했다(연결 도구가 체크섬을 주지 않고, 내려받은 내용도 호출 결과로만 돌아온다). 크기만 일치를 확인했다.
+
+### 감사·검증과 "한국어 문장 점검"
+
+- 1화 감사 요청에는 블록이 없다(검사기 결과 `[]`). 2화 감사 요청에는 블록이 들어갔다: `ending-repetition` 서술 문장 4개가 연달아 `~었다`로 끝납니다. (줄 25, 29, 35).
+  reviewer는 대사 줄이 사이에 끊어 주어 리듬을 해치지 않는다고 보고 관찰로 남기지 않았다.
+- 감사 결과
+  - 1화(7건): PLAN-BEAT-PREEMPTED(중간, 4화에 둔 첫 질문을 91행에서 먼저 함), KO-HONORIFIC-REGISTER(경미, 141행 "버리시더군" 하오체 이탈), MEMO-SHOW-NOT-SUMMARY(경미),
+    WORLD-RULE-WATER-CONTINUITY·MEMO-SCENES-AND-BOUNDS·HOOK-MOVEMENT·COUNT-AND-VOICE-CONSISTENT(관찰).
+  - 2화(6건): SENTENCE-SELF-CONTRADICTION(경미, 85행 "치수만 재 주었다" 뒤 지시가 이어짐), CH1-CONTINUITY·HOOK-MOVEMENT·PULMU-COST-CARRYOVER·WATER-INFERENCE-CONTINUITY·VOICE-AND-REGISTER(관찰).
+- 상태 검증: 1화 true → 재정산 → false, 2화 false. 1차와 달리 시작 회차 0을 모순으로 판정한 일은 없다.
+
+### 브리지 요청 (16건 모두 delivered, failed 0, 버려짐 0)
+
+| 요청 | 도구 | 답한 쪽 |
+| --- | --- | --- |
+| r-20261025-154009-6a89e729 | submit_foundation_outline | writer |
+| r-20261025-154345-dbf6e5f3 | submit_foundation_details | writer |
+| r-20261025-154538-fc786138 | submit_foundation_cast_index | writer |
+| r-20261025-154558-b20a730f | submit_foundation_cast_documents | writer |
+| r-20261025-154733-21376a40 | submit_chapter_memo (1화) | writer |
+| r-20261025-154851-58d1be8f | submit_chapter_draft (1화) | writer |
+| r-20261025-155054-01e7978a | submit_runtime_state_delta (1화) | writer |
+| r-20261025-155206-2083a5a1 | submit_chapter_review (1화) | reviewer |
+| r-20261025-155458-f93f31e3 | submit_state_validation (1화) | reviewer |
+| r-20261025-155635-173714b5 | submit_runtime_state_delta (1화 재정산) | writer |
+| r-20261025-155741-38cd778b | submit_state_validation (1화 재검증) | reviewer |
+| r-20261025-155938-9aee8ef5 | submit_chapter_memo (2화) | writer |
+| r-20261025-160051-19a27a8d | submit_chapter_draft (2화) | writer |
+| r-20261025-160234-441013d9 | submit_runtime_state_delta (2화) | writer |
+| r-20261025-160355-3a7f2164 | submit_chapter_review (2화) | reviewer |
+| r-20261025-160623-7624a53c | submit_state_validation (2화) | reviewer |
+
+CLI·로그(job 3개)의 중국어 줄: 0. 영어 출력 목록은 1차와 같다(`Stage: …`, `(2880 words)`).
+분량: 엔진 기록 1화 2897·2화 2880 = 파일 재계산 2897·2880(장면 구분 `***` 포함). 둘 다 2,591~3,409 안.
