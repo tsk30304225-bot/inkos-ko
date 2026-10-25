@@ -11,7 +11,7 @@ settings - never from the command line or chat:
   INKOS_GDRIVE_CLIENT_ID, INKOS_GDRIVE_CLIENT_SECRET, INKOS_GDRIVE_REFRESH_TOKEN
   INKOS_GDRIVE_FOLDER_ID   (the Drive folder that holds the archives)
 
-  novel-drive.py pack  <project> [out.tar.gz | -o out.tar.gz]
+  novel-drive.py pack  <project> [out.tar.gz | -o out.tar.gz] [--resume]
   novel-drive.py unpack <archive> <dest>
   novel-drive.py push  <project> [--keep 10]
   novel-drive.py pull  <dest> [--name ARCHIVE_NAME] [--force]
@@ -29,6 +29,7 @@ created, so create the folder with init-folder rather than in the Drive UI.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import io
 import json
 import os
@@ -65,14 +66,85 @@ def included(rel: PurePosixPath) -> bool:
     return rel.name not in SKIP_FILES and not rel.name.startswith(".env.")
 
 
-def pack_bytes(project: Path) -> bytes:
+# --resume keeps only what continuing the work needs (see korean-port/RUNTIME.md):
+# project settings, each work's manifest, and its source/ (book.json, chapters/,
+# story/ with state files and the two newest state snapshots - revising or
+# rewriting the newest chapter restores the one before it).
+# Left out: .inkos/ (episode history), revisions/ (history; unpack rebuilds the
+# current revision's snapshot from source/ when the checksum matches), story/memory.db
+# (a rebuildable search index), older snapshots, and the bridge docs the installer writes.
+RESUME_ROOT_FILES = {"inkos.json", ".node-version", ".nvmrc"}
+RESUME_SKIP_STORY = {"memory.db", "memory.db-shm", "memory.db-wal"}
+RESUME_SNAPSHOTS = 2
+
+
+def resume_paths(project: Path) -> set[str]:
+    keep = set(RESUME_ROOT_FILES)
+    for manifest_path in sorted((project / "works").glob("*/work.json")):
+        keep.add(PurePosixPath("works", manifest_path.parent.name, "work.json").as_posix())
+    return keep
+
+
+def kept_snapshots(project: Path, work: str) -> set[str]:
+    root = project / "works" / work / "source" / "story" / "snapshots"
+    numbers = sorted((int(p.name) for p in root.iterdir() if p.is_dir() and p.name.isdigit()), reverse=True) if root.is_dir() else []
+    return {str(n) for n in numbers[:RESUME_SNAPSHOTS]}
+
+
+def resume_included(project: Path, rel: PurePosixPath, keep: set[str], snapshots: dict[str, set[str]]) -> bool:
+    if rel.as_posix() in keep:
+        return True
+    parts = rel.parts
+    if not (len(parts) > 3 and parts[0] == "works" and parts[2] == "source"):
+        return False
+    story = parts[3:]
+    if story[:1] == ("story",) and len(story) == 2 and story[1] in RESUME_SKIP_STORY:
+        return False
+    if story[:2] == ("story", "snapshots") and len(story) > 2:
+        if parts[1] not in snapshots:
+            snapshots[parts[1]] = kept_snapshots(project, parts[1])
+        return story[2] in snapshots[parts[1]]
+    return True
+
+
+def restore_current_snapshots(dest: Path) -> int:
+    """Recreate each current revision's snapshot from its source file (same checksum)."""
+    restored = 0
+    for manifest_path in sorted((dest / "works").glob("*/work.json")):
+        work_dir = manifest_path.parent
+        try:
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        for artifact in manifest.get("artifacts", []):
+            for revision in artifact.get("revisions", []):
+                snapshot, source = revision.get("snapshotPath"), revision.get("path")
+                if revision.get("id") != artifact.get("currentRevisionId") or not snapshot or not source:
+                    continue
+                target, origin = work_dir / snapshot, work_dir / source
+                if target.exists() or not origin.is_file() or ".." in PurePosixPath(snapshot).parts:
+                    continue
+                data = origin.read_bytes()
+                if "sha256:" + hashlib.sha256(data).hexdigest() != revision.get("checksum"):
+                    continue
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_bytes(data)
+                restored += 1
+    return restored
+
+
+def pack_bytes(project: Path, resume: bool = False) -> bytes:
     if not (project / "inkos.json").is_file():
         die(f"{project} is not an InkOS project (no inkos.json)")
+    keep = resume_paths(project) if resume else set()
+    snapshots: dict[str, set[str]] = {}
     buffer = io.BytesIO()
     with tarfile.open(fileobj=buffer, mode="w:gz") as tar:
         for path in sorted(project.rglob("*")):
             rel = PurePosixPath(path.relative_to(project).as_posix())
             if path.is_symlink() or not included(rel):
+                continue
+            if resume and not resume_included(project, rel, keep, snapshots):
                 continue
             if path.is_file():
                 tar.add(path, arcname=str(rel), recursive=False)
@@ -96,6 +168,7 @@ def unpack_bytes(data: bytes, dest: Path, force: bool) -> int:
                 continue
             target.write_bytes(source.read())
             count += 1
+    restore_current_snapshots(dest)
     return count
 
 
@@ -190,6 +263,7 @@ def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = parser.add_subparsers(dest="command", required=True)
     p = sub.add_parser("pack"); p.add_argument("project"); p.add_argument("archive", nargs="?"); p.add_argument("-o", "--output")
+    p.add_argument("--resume", action="store_true", help="only what continuing the work needs (no history)")
     p = sub.add_parser("unpack"); p.add_argument("archive"); p.add_argument("dest"); p.add_argument("--force", action="store_true")
     p = sub.add_parser("push"); p.add_argument("project"); p.add_argument("--keep", type=int, default=10)
     p.add_argument("--force", action="store_true", help="push even if Drive's newest archive is not this copy's base")
@@ -201,7 +275,7 @@ def main(argv: list[str] | None = None) -> None:
 
     if args.command == "pack":
         project = Path(args.project)
-        data = pack_bytes(project)
+        data = pack_bytes(project, resume=args.resume)
         out = Path(args.output or args.archive or archive_name(project_key(project)))
         out.write_bytes(data)
         print(f"packed {project} -> {out} ({len(data)} bytes)")

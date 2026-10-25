@@ -121,6 +121,48 @@ check("unpack ok", r.returncode == 0 and (tmp / "restored/works/달빛/source/ch
 r = run("unpack", str(out), str(tmp / "restored"))
 check("unpack refuses to overwrite a project without --force", r.returncode != 0)
 
+import hashlib
+resume_project = tmp / "이어쓰기"
+work = resume_project / "works" / "달빛"
+for rel, text in {
+    "source/book.json": '{"language":"ko"}',
+    "source/chapters/0001_시작.md": "# 제1화 시작\n\n본문",
+    "source/story/state/manifest.json": '{"lastAppliedChapter":3}',
+    "source/story/memory.db": "index",
+    "source/story/runtime/chapter-0001.plan.json": "{}",
+    "source/story/snapshots/1/current_state.md": "s1",
+    "source/story/snapshots/2/current_state.md": "s2",
+    "source/story/snapshots/3/current_state.md": "s3",
+    "revisions/old/rev-old.md": "old text",
+}.items():
+    (work / rel).parent.mkdir(parents=True, exist_ok=True)
+    (work / rel).write_text(text, encoding="utf-8")
+(resume_project / "inkos.json").write_text('{"language":"ko"}', encoding="utf-8")
+(resume_project / ".inkos").mkdir()
+(resume_project / ".inkos" / "harness.sqlite").write_text("history")
+(resume_project / "AGENTS.md").write_text("bridge doc")
+chapter_bytes = (work / "source/chapters/0001_시작.md").read_bytes()
+(work / "work.json").write_text(json.dumps({"artifacts": [{
+    "id": "ch1", "currentRevisionId": "rev-new",
+    "revisions": [
+        {"id": "rev-old", "path": "source/chapters/0001_시작.md", "snapshotPath": "revisions/old/rev-old.md", "checksum": "sha256:x"},
+        {"id": "rev-new", "path": "source/chapters/0001_시작.md", "snapshotPath": "revisions/ch1/rev-new.md",
+         "checksum": "sha256:" + hashlib.sha256(chapter_bytes).hexdigest()},
+    ]}]}), encoding="utf-8")
+resume_out = tmp / "resume.tar.gz"
+r = run("pack", str(resume_project), str(resume_out), "--resume")
+resume_names = set(tarfile.open(resume_out).getnames())
+check("pack --resume keeps settings, manifest, chapters, state and the two newest snapshots",
+      {"inkos.json", "works/달빛/work.json", "works/달빛/source/chapters/0001_시작.md", "works/달빛/source/story/state/manifest.json",
+       "works/달빛/source/story/snapshots/2/current_state.md", "works/달빛/source/story/snapshots/3/current_state.md"} <= resume_names, str(resume_names))
+check("pack --resume leaves out history, search index, runtime, old snapshots and bridge docs",
+      not any(n.startswith((".inkos/", "works/달빛/revisions/")) or n.endswith(("memory.db", "AGENTS.md")) or "/runtime/" in n or "/snapshots/1/" in n
+              for n in resume_names), str(resume_names))
+r = run("unpack", str(resume_out), str(tmp / "resumed"))
+rebuilt = tmp / "resumed/works/달빛/revisions/ch1/rev-new.md"
+check("unpack rebuilds the current revision snapshot from source when the checksum matches",
+      r.returncode == 0 and rebuilt.read_bytes() == chapter_bytes and not (tmp / "resumed/works/달빛/revisions/old/rev-old.md").exists(), r.stdout + r.stderr)
+
 evil = tmp / "evil.tar.gz"
 with tarfile.open(evil, "w:gz") as tar:
     info = tarfile.TarInfo("../escape.txt"); data = b"x"; info.size = 1

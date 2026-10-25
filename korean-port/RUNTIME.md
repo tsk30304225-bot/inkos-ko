@@ -45,6 +45,39 @@ inkos-agent wait --job $JOB --timeout 90     # 브리지 1.2: 항상 exit 0, 첫
 `pack`은 작품 프로젝트 전체(설정·원고·상태·스냅샷·작업 기록)를 tar.gz 하나로 묶고, `.env`·브리지 `runtime/`·`.inkos-drive-base`는 넣지 않는다.
 받은 압축본은 `python3 tools/novel-drive.py unpack <압축본> <작품 폴더>`로 푼다(기존 프로젝트가 있으면 `--force`가 필요하다).
 
+### 압축본 구성과 재개용 묶음(`pack --resume`)
+
+5-a 1차 작품(설계 + 2화)의 전체 압축본 752,334바이트 구성(파일별 zlib 압축 크기 합, 2026-10-25 측정):
+
+| 항목 | 압축 후 | 원래 크기 | 무엇인가 | 이어 쓰기에 필요한가 |
+| --- | --- | --- | --- | --- |
+| `.inkos/harness.sqlite` | 606,701 | 2,076,672 | 실행 기록(`creative_episodes` 4행, `creative_episode_events` 211행) | 아니오. 기록일 뿐 다시 만들어진다 |
+| `works/<id>/revisions/` | 136,662 | 405,184 | 모든 파일의 판 73개(현재 판 포함) | 지난 판은 아니오. 현재 판은 `source/`와 같은 내용 |
+| `works/<id>/source/story/` | 60,416 | 212,423 | 설계·상태·스냅샷·`memory.db` | 예(`memory.db`는 다시 만들어지는 검색 색인이라 제외 가능) |
+| `works/<id>/source/chapters/` | 19,013 | 58,132 | 원고, 회차 색인 | 예 |
+| `works/<id>/work.json` | 5,915 | 55,588 | 작업 목록(판 기록 포함) | 예 |
+| 브리지 문서(`AGENTS.md` 등 5개) | 6,622 | 12,562 | 브리지 설치가 다시 쓰는 문서 | 아니오 |
+
+`pack --resume`은 이어 쓰기에 필요한 것만 묶는다: `inkos.json`·`.node-version`·`.nvmrc`, 작품마다 `work.json`과 `source/` 전체
+(`book.json`, `chapters/`, `story/`의 설계·상태 파일, 가장 최근 스냅샷 2개).
+스냅샷을 2개 두는 이유는, 가장 최근 회차를 수정하거나 다시 쓸 때 그 앞 회차의 스냅샷을 기준으로 상태를 되돌리기 때문이다(`runner.ts` revise, `write rewrite`).
+빠지는 것: `.inkos/`(실행 기록), `revisions/`(지난 판), `story/memory.db`(다시 만들어지는 검색 색인), 더 오래된 스냅샷, 브리지 문서, 그리고 원래 `pack`처럼 `runtime/` 폴더.
+`unpack`은 각 파일의 현재 판 스냅샷을 `source/`의 같은 파일에서 다시 만든다(체크섬이 같을 때만).
+
+```
+python3 tools/novel-drive.py pack <작품 폴더> <작품ID>_<YYYYMMDD-HHMM>_<마지막 회차>화.tar.gz --resume
+```
+
+같은 작품(2화)의 `--resume` 압축본: 47,685바이트(base64 63,580자). 빈 폴더에 풀면 `inkos status` 출력이 원래 프로젝트와 같다(경로만 다름).
+현재 판 59개 중 43개가 다시 만들어지고, 16개(스냅샷 0, `memory.db`, `story/runtime/` 회차 기록)는 의도적으로 빠진다.
+압축본이 하는 일의 한계:
+- 지난 판(되돌리기용 기록)과 그 16개 현재 판은 읽을 수 없다(`ARTIFACT_SNAPSHOT_UNAVAILABLE`).
+- 가장 최근 2개보다 앞 회차의 수정·다시 쓰기는 기준 스냅샷이 없어 실패한다. 그런 작업이 필요하면 전체 압축본을 쓴다.
+- 다음 회차를 쓸 때 빠진 원본 파일(스냅샷 0, 지난 `runtime/`)은 작업 목록에서 제거됨으로 표시된다. 원래 `pack`도 `runtime/`을 넣지 않으므로 같은 동작이다.
+
+Drive 연결 도구(`create_file`)는 파일 내용을 base64 문자열로 호출 안에 직접 넣는다. 크기 한계는 Drive가 아니라 에이전트가 한 번의 호출에 쓸 수 있는 글자 수다.
+2026-10-25 이 세션에서 base64 15,240자(11,430바이트)는 올라갔고 Drive가 돌려준 크기가 일치했다. 압축본은 회차마다 대략 10~15KB씩 커진다.
+
 ## 선택: OAuth 직접 동기화 (`novel-drive.py push`/`pull`)
 
 Drive 연결 대신, 실행 환경의 비밀값으로 스크립트가 Drive API를 직접 부르는 방법이다. 선택 사항이며 기본 지침은 위의 Drive 연결이다.
