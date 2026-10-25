@@ -45,7 +45,9 @@ def job_output(jid, timeout=30):
 
 def next_request():
     proc = cli("wait", "--timeout", "20")
-    return proc.stdout.split()[0]
+    lines = [l for l in proc.stdout.splitlines() if l.startswith("r-")]
+    assert lines, proc.stdout
+    return lines[0].split()[0]
 
 
 try:
@@ -56,7 +58,7 @@ try:
     jid = cli("job", "start", "--", "stream").stdout.strip()
     rid = next_request()
     prompt = cli("show", rid).stdout
-    check("prompt render", "제1화를 써라" in prompt and "role guess" in prompt and "write" in prompt)
+    check("prompt render", "제1화를 써라" in prompt and "system prompt starts" in prompt and "InkOS writer agent" in prompt)
     time.sleep(3.5)  # longer than grace + several keepalives
     answer = tmp / "a.md"
     answer.write_text("비가 내렸다. " * 200)
@@ -69,6 +71,22 @@ try:
     check("stream finish/done/usage", result["finish"] == "stop" and result["done"] and result["usage"], result)
     check("keepalive comments sent", result["comments"] >= 2, result["comments"])
     check("request delivered", json.loads((tmp / "state" / "requests" / rid / "meta.json").read_text())["status"] == "delivered")
+
+    # 1a. wait semantics: EVENT lines, exit 0 for normal outcomes
+    idle = cli("wait", "--timeout", "1")
+    check("wait timeout is exit 0 with EVENT", idle.returncode == 0 and idle.stdout.startswith("EVENT: timeout"), idle.stdout)
+    done = cli("wait", "--job", jid, "--timeout", "5")
+    check("wait job-finished is exit 0", done.returncode == 0 and "EVENT: job-finished" in done.stdout and "succeeded" in done.stdout, done.stdout)
+    legacy = cli("wait", "--job", jid, "--timeout", "5", "--legacy-codes", check=False)
+    check("legacy exit 3 kept on request", legacy.returncode == 3)
+
+    # 1c. protocol tags: shown in prompt, missing tags warn but do not block
+    jid = cli("job", "start", "--", "tags").stdout.strip()
+    rid = next_request()
+    check("tags listed in prompt", "=== CHAPTER_CONTENT ===" in cli("show", rid).stdout)
+    warned = cli("reply", rid, "--text", "태그 없는 답")
+    check("missing tags warn only", "warning" in warned.stderr and warned.returncode == 0, warned.stderr)
+    job_output(jid)
 
     # 1b. claims: one owner, one answer
     jid = cli("job", "start", "--", "buffered").stdout.strip()

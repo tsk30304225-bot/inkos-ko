@@ -1,7 +1,10 @@
 ## Korean edition (fork rules)
 
 This fork turns InkOS 2.0 into a Korean-novel edition. Before any work, read
-`korean-port/PLAN.md` and continue from its "진행 기록". Update that log
+`korean-port/PLAN.md` and `korean-port/OPERATING_RULES.md`, and continue from
+PLAN's "진행 기록". You are the developer role: work only on `ko/<stage>`
+branches, report each stage in the `[보고]` format from OPERATING_RULES.md, and
+do not start the next stage until the supervisor's `[승인]`. Update that log
 (date, branch/commit, test results) at the end of every session.
 
 - Never change zh/en behaviour; the upstream test suite must keep passing.

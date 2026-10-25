@@ -25,7 +25,7 @@ import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-VERSION = "1.1.0"
+VERSION = "1.2.0"
 ROOT = Path(__file__).resolve().parent
 STATE = Path(os.environ.get("INKOS_AGENT_STATE", ROOT / "runtime")).resolve()
 REQUESTS = STATE / "requests"
@@ -205,19 +205,29 @@ def text_of(content) -> str:
     return "\n".join(parts)
 
 
-def guess_role(body: dict) -> str:
-    """Heuristic label from the system prompt; InkOS sends no role header."""
-    system = " ".join(text_of(m.get("content")) for m in body.get("messages", [])
-                      if m.get("role") in ("system", "developer"))[:4000].lower()
-    table = [("review", ("audit", "review", "审稿", "审计", "检수", "검수", "continuity")),
-             ("plan", ("planner", "architect", "outline", "规划", "大纲", "기획", "chapter memo")),
-             ("state", ("settler", "state", "ledger", "hook", "结算", "状态", "정산")),
-             ("revise", ("reviser", "revision", "polish", "修订", "润色", "수정")),
-             ("write", ("writer", "write the chapter", "写作", "正文", "집필"))]
-    for label, keys in table:
-        if any(k in system for k in keys):
-            return label
-    return "general"
+def system_head(body: dict, limit: int = 100) -> str:
+    """Opening of the first system message, so the agent decides the role itself.
+    (A keyword guess was removed in 1.2: it misfiled requests too often.)"""
+    for m in body.get("messages", []):
+        if m.get("role") in ("system", "developer"):
+            text = " ".join(text_of(m.get("content")).split())
+            return text[:limit] + ("..." if len(text) > limit else "")
+    return ""
+
+
+_TAG_RE = re.compile(r"===\s*([A-Z][A-Z0-9_ ]{1,40}?)\s*===")
+
+
+def protocol_tags(body: dict) -> list[str]:
+    """`=== TAG ===` markers named in the prompt (InkOS parsers rely on them)."""
+    text = "\n".join(text_of(m.get("content")) for m in body.get("messages", [])
+                     if m.get("role") in ("system", "developer", "user"))
+    seen = []
+    for tag in _TAG_RE.findall(text):
+        tag = " ".join(tag.split())
+        if tag not in seen:
+            seen.append(tag)
+    return seen
 
 
 def render_prompt(rid: str, endpoint: str, body: dict) -> str:
@@ -226,7 +236,12 @@ def render_prompt(rid: str, endpoint: str, body: dict) -> str:
              f"- stream: `{bool(body.get('stream'))}`",
              f"- max_tokens: `{body.get('max_tokens') or body.get('max_completion_tokens')}`",
              f"- temperature: `{body.get('temperature')}`",
-             f"- role guess (heuristic): `{guess_role(body)}`"]
+             f"- system prompt starts: `{system_head(body, 160)}`",
+             "- role: decide from the system messages below (the bridge does not guess)"]
+    tags = protocol_tags(body)
+    if tags:
+        lines.append("- output tags named in the prompt: " + ", ".join(f"`=== {t} ===`" for t in tags)
+                     + " (keep exactly the ones the required output format uses)")
     if body.get("response_format"):
         lines.append(f"- response_format: `{json.dumps(body['response_format'], ensure_ascii=False)[:2000]}`")
     if body.get("tool_choice") is not None:
@@ -360,7 +375,8 @@ class Handler(BaseHTTPRequestHandler):
         atomic_write(folder / "prompt.md", render_prompt(rid, path, body))
         update_meta(rid, id=rid, kind=kind, endpoint=path, status="pending", created=now(),
                     created_at=stamp(), stream=bool(body.get("stream")) and kind == "chat",
-                    role_guess=guess_role(body) if kind == "chat" else "image",
+                    system_head=system_head(body) if kind == "chat" else "image request",
+                    protocol_tags=protocol_tags(body) if kind == "chat" else [],
                     tools=[(t.get("function") or t).get("name") for t in body.get("tools") or []],
                     max_tokens=body.get("max_tokens") or body.get("max_completion_tokens"))
         self.log_message("queued %s %s", rid, path)
@@ -728,8 +744,9 @@ def summary(meta: dict) -> str:
     size = prompt.stat().st_size if prompt.exists() else 0
     tools = f" tools={','.join(meta['tools'])}" if meta.get("tools") else ""
     claimed = f" claimed_by={meta.get('claimed_by')}" if meta.get("status") == "claimed" else ""
-    return (f"{meta['id']}  {meta['status']}  {meta.get('kind')}  role~{meta.get('role_guess')}"
-            f"  max_tokens={meta.get('max_tokens')}{tools}{claimed}  prompt={prompt} ({size} bytes)")
+    return (f"{meta['id']}  {meta['status']}  {meta.get('kind')}"
+            f"  max_tokens={meta.get('max_tokens')}{tools}{claimed}  prompt={prompt} ({size} bytes)"
+            f"\n    system: {meta.get('system_head') or meta.get('role_guess', '')}")
 
 
 def cmd_pending(args):
@@ -748,18 +765,21 @@ def cmd_wait(args):
     while True:
         items = [m for m in open_requests() if args.include_claimed or m["status"] == "pending"]
         if items:
+            print(f"EVENT: request ({len(items)} open)")
             for meta in items:
                 print(summary(meta))
             raise SystemExit(0)
         if args.job:
             job = get_job(args.job)
             if job["state"] != "running":
-                print(f"job {job['id']} {job['state']} exit={job.get('exit_code')}")
+                code = job.get("exit_code")
+                verdict = "succeeded" if code == 0 else "FAILED"
+                print(f"EVENT: job-finished {job['id']} {verdict} (inkos exit={code}, state={job['state']})")
                 print("\n".join((JOBS / f"{job['id']}.log").read_text(encoding="utf-8", errors="replace").splitlines()[-25:]))
-                raise SystemExit(3)
+                raise SystemExit(3 if args.legacy_codes else 0)
         if now() >= deadline:
-            print("(timeout: nothing pending yet; call wait again)")
-            raise SystemExit(4)
+            print("EVENT: timeout (nothing pending yet; call wait again)")
+            raise SystemExit(4 if args.legacy_codes else 0)
         time.sleep(1)
 
 
@@ -870,6 +890,12 @@ def cmd_reply(args):
             missing = [k for k in schema_required(body) if not isinstance(doc, dict) or k not in doc]
             if missing:
                 die(f"JSON answer misses required keys {missing}; fix it or pass --force")
+        tags = meta.get("protocol_tags") or []
+        if tags and not calls and text and not any(f"=== {t} ===" in " ".join(text.split()) or f"==={t}===" in text
+                                                    for t in tags):
+            print("warning: the prompt names output tags (" + ", ".join(f"=== {t} ===" for t in tags[:6])
+                  + ") but the answer contains none; InkOS may fail to parse it. "
+                  "Check the required output format (warning only).", file=sys.stderr)
         answer = {"text": text or "", "tool_calls": calls}
     answer.update(answered_by=args.by, answered_at=stamp())
     commit_answer(args, answer, "answered")
@@ -1009,10 +1035,13 @@ def main(argv=None):
     p = sub.add_parser("pending", help="list open requests")
     p.add_argument("--json", action="store_true")
     p.set_defaults(fn=cmd_pending)
-    p = sub.add_parser("wait", help="block until a request is pending (exit 0), job ends (3) or timeout (4)")
+    p = sub.add_parser("wait", help="block until a request is pending, the job ends, or timeout; "
+                                    "first line 'EVENT: request|job-finished|timeout' (exit 0)")
     p.add_argument("--timeout", type=float, default=90)
     p.add_argument("--job")
     p.add_argument("--include-claimed", action="store_true")
+    p.add_argument("--legacy-codes", action="store_true",
+                   help="exit 3 on job end and 4 on timeout (pre-1.2 behaviour)")
     p.set_defaults(fn=cmd_wait)
     p = sub.add_parser("show", help="print a request as readable markdown")
     p.add_argument("id")

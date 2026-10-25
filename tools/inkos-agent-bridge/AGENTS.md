@@ -27,13 +27,15 @@ the foreground: `inkos-agent run -- book list --json`.
 ```bash
 JOB=$(inkos-agent job start -- write next <book-id> --count 1)
 inkos-agent wait --job $JOB --timeout 90
-#   exit 0 -> lines "r-... pending ... prompt=<path>"   : answer them (step 3)
-#   exit 3 -> job finished (exit code + log tail shown) : verify results (step 4)
-#   exit 4 -> nothing yet                               : call wait again
+# Always exit 0; read the first line:
+#   EVENT: request ...       -> lines "r-... pending ... prompt=<path>" : answer them (step 3)
+#   EVENT: job-finished ...  -> "succeeded"/"FAILED" + inkos exit code  : verify results (step 4)
+#   EVENT: timeout           -> nothing yet                              : call wait again
 ```
 
 Keep each shell call short (`--timeout 90`); the job keeps running in the
-background between calls. Repeat `wait` until exit 3. Several requests may be
+background between calls. Repeat `wait` until `EVENT: job-finished`; the job's own
+result is the `inkos exit=` value on that line, not the shell exit code. Several requests may be
 pending at once; they are independent and can be answered in any order.
 
 Prefer explicit CLI actions (`book create`, `write next`, `revise`, `review`,
@@ -64,6 +66,11 @@ Rules for the answer:
   `max_tokens` in the prompt header is a hard upper bound.
 - Never invent observations, passing reviews, scores, saved files or usage. A
   review states only what the supplied text supports.
+- When a prompt names `=== TAG ===` output markers, `reply` warns if the answer
+  has none of them. Check the required format before ignoring the warning.
+- Reviews keep the severity an issue deserves. Never downgrade an unresolved
+  problem (e.g. to `info`) because it is "outside this revision's scope"; report it
+  at its real severity and say it was not addressed by this revision.
 - When a request was already `answered`, `abandoned` or `expired`, leave it.
   `abandoned` means InkOS stopped waiting (cancel, crash, retry).
 - Use `fail` instead of a fake answer. `--retryable` lets InkOS retry the call.
@@ -91,8 +98,11 @@ The main session coordinates; subagents answer requests.
 - Review/audit requests must go to a different subagent than the one that wrote
   the chapter under review, so the review is independent.
 - Planning, writing, revision and state settlement can share the writer role.
-- The role guess (`role~...`) in `wait` output is a keyword heuristic; the
-  system prompt decides.
+- The bridge does not guess roles. `wait` shows the opening of each system
+  prompt; read it (or the full prompt) to decide writer vs reviewer.
+- Without subagents, two background workers (one writer, one reviewer) are a
+  valid substitute: each `claim`s only requests of its own role and leaves the
+  rest pending. `claim` is atomic, so two workers never answer the same request.
 
 ## 6. Limits to tell the user about
 
@@ -108,6 +118,15 @@ The main session coordinates; subagents answer requests.
 - Studio ignores env settings. Only for Studio: `inkos-agent studio-config`
   (backs up `inkos.json` to `inkos.pre-agent.json`), `inkos-agent start
   --studio`; undo with `inkos-agent restore`.
+
+## Environment notes (from real runs)
+
+- Node 22+ is required (InkOS uses `node:sqlite`; the 2.0 source needs 22.16+).
+  Install one Node version with one tool. Two overlapping installs broke npm's own
+  files once (`Class extends value undefined` during a build). Check `node -v` and
+  `npm -v` before building.
+- InkOS writes role cards to `roles/主要角色` and `roles/次要角色` (engine default; it
+  also reads `roles/major` and `roles/minor`). Do not rename them by hand.
 
 ## Korean projects
 
