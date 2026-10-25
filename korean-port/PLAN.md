@@ -286,3 +286,14 @@ names, scene order, or signature combinations" 원칙을 그대로 지킨다). �
   - 시험: `python3 -I tools/inkos-agent-bridge/tests/test_bridge.py` → 33/33 passed, `test_long_wait.py` 2/2 PASS.
   - 남은 불일치: 새 `CLAUDE.md`는 "`ko/<stage>` 브랜치에서만 작업"이라고 쓰지만 운영 규칙 v1.1·결정 사항은 세션 지정 브랜치 하나를 허용한다. 우선순위(결정 사항 → 운영 규칙 → CLAUDE.md)대로 세션 브랜치를 쓴다.
   - 다음: 지시받은 이어서 할 일(4-1 fix: Drive 덮어쓰기 방지, SURVEY 원본 수정 범위 숫자·대상 밖 변경 정리, ko 인물 폴더) — 별도 커밋 `(stage 4-1 fix)`.
+- 2026-10-25 (`claude/eeum-n0rsol`): **0-a 이어서 할 일(4-1 fix, 1단계 보완) 완료.** 커밋은 모두 `(stage 4-1 fix)`.
+  - `289c01c` Drive 덮어쓰기 방지: `pull`이 `<작품>/.inkos-drive-base`에 복원한 보관본 이름·작품 키를 기록, `push`는 Drive 최신본이 그 기록과 다르거나
+    기록이 없는데 Drive에 보관본이 있으면 exit 3으로 거부(`--force`로만 진행), 성공하면 기록 갱신. 작품 키는 보관본 이름에서 읽어 다른 폴더 이름으로 복원해도 같은 작품. 기록 파일은 묶지 않음.
+    오프라인 가짜 Drive 시험 24/24.
+  - `8b01e6f` 원본 수정 범위 숫자를 SURVEY.md 6절에 기록(87개 +801/−482 → 79개 +773/−450, 새 파일 43개 +2,785). 대상 밖인 플레이·인터랙티브 필름·예측의
+    패치 변경 8개 파일을 원본으로 되돌리고, ko가 넘어가는 4곳은 `upstreamLanguage()`(ko→en)로 명시. 동작은 기존 패치와 같음.
+  - 이번 커밋: ko 작품 인물 카드 폴더 `roles/major`·`roles/minor`(`utils/korean-language.ts` `roleTierDirectory`, `agents/architect.ts`, `state/manager.ts`).
+    zh/en은 원본(`主要角色`/`次要角色`) 그대로. ko 설계 수정 때는 예전 중국어 폴더의 카드도 정리. 읽는 쪽은 원래 네 폴더를 모두 읽음. 테스트 `korean-role-folders.test.ts` 4개.
+  - 검증(프록시 변수 제거): core 748 / studio 307 / cli 94 = 1,149 통과(원본 1,093 포함), 브리지 33/33, Drive 24/24. 원본 수정 현재 79개 +778/−454.
+  - 감독 확인 필요: 브리지 `AGENTS.md`의 "InkOS writes role cards to roles/主要角色 … Do not rename them by hand"는 이제 ko 작품에는 맞지 않는다(감독 문서라 고치지 않음).
+    1.8 교훈의 "한국어 review 스킬에 등급을 낮추지 않는다를 넣는다"는 아직 반영하지 않았다(지시 범위 밖).

@@ -1,4 +1,5 @@
 import { ownsWorkMutation } from "../utils/work-mutation-scope.js";
+import { roleTierDirectory } from "../utils/korean-language.js";
 import { readFile, writeFile, mkdir, readdir, rm, stat, unlink, open } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 import { join, resolve } from "node:path";
@@ -83,8 +84,8 @@ export class StateManager {
     const storyDir = join(bookDir, "story");
     const runtimeDir = join(storyDir, "runtime");
     const outlineDir = join(storyDir, "outline");
-    const rolesMajorDir = join(storyDir, "roles", "主要角色");
-    const rolesMinorDir = join(storyDir, "roles", "次要角色");
+    const rolesMajorDir = join(storyDir, "roles", roleTierDirectory(language, "major"));
+    const rolesMinorDir = join(storyDir, "roles", roleTierDirectory(language, "minor"));
 
     await mkdir(storyDir, { recursive: true });
     await mkdir(runtimeDir, { recursive: true });

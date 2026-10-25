@@ -8,7 +8,7 @@ import { FoundationDetailsToolSchema, FoundationOutlineToolSchema, FoundationCas
 import type { HookRecord } from "../models/runtime-state.js";
 import { createInitialRuntimeState } from "../state/runtime-state-store.js";
 import { commitAtomicFileSet, type AtomicFileWrite } from "../utils/atomic-file-set.js";
-import { promptLanguage } from "../utils/korean-language.js";
+import { promptLanguage, roleTierDirectories, roleTierDirectory } from "../utils/korean-language.js";
 
 // Architect owns the five-section persistence protocol. Foundation craft is
 // supplied by the active long-writing and derivative-work Skills.
@@ -158,14 +158,14 @@ ${reviseFrom.userFeedback || "（无）"}
       const safeName = role.name.replace(/[/\\:*?"<>|]/g, "_").trim();
       if (!safeName) throw new Error("Foundation role name cannot be represented as a safe file name.");
       writes.push({
-        relativePath: join("story", "roles", role.tier === "major" ? "主要角色" : "次要角色", `${safeName}.md`),
+        relativePath: join("story", "roles", roleTierDirectory(language, role.tier), `${safeName}.md`),
         content: `${role.content.trim()}\n`,
       });
     }
     const replacementPaths=new Set(writes.map(write=>write.relativePath));
     const deletes:string[]=[];
     if (mode === "revise") {
-      for (const tier of ["主要角色","次要角色"]) {
+      for (const tier of roleTierDirectories(language)) {
         const directory=join("story","roles",tier);
         let entries;
         try { entries=await readdir(join(bookDir,directory),{withFileTypes:true}); }

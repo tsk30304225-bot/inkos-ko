@@ -44,6 +44,20 @@ export function chapterLabel(language: WritingLanguage | undefined, chapterNumbe
   });
 }
 
+/**
+ * Role-card folder under story/roles/. Upstream writes 主要角色/次要角色 for every
+ * language; ko works use major/minor (every reader already accepts both).
+ */
+export function roleTierDirectory(language: WritingLanguage | undefined, tier: "major" | "minor"): string {
+  if (language === "ko") return tier;
+  return tier === "major" ? "主要角色" : "次要角色";
+}
+
+/** Folders a foundation revision clears; ko also clears older upstream-named folders. */
+export function roleTierDirectories(language: WritingLanguage | undefined): string[] {
+  return language === "ko" ? ["major", "minor", "主要角色", "次要角色"] : ["主要角色", "次要角色"];
+}
+
 /** Length-unit phrase for prompts, e.g. "3000자(공백 제외)". */
 export function koreanLengthPhrase(count: number): string {
   return `${count}자(공백 제외)`;
