@@ -527,7 +527,14 @@ def foreign_bridge() -> str | None:
 
 
 def inkos_bin() -> str:
-    return os.environ.get("INKOS_BIN") or shutil.which("inkos") or "inkos"
+    """$INKOS_BIN, else the setup launcher ~/.local/bin/inkos, else `inkos` on PATH.
+    Shells that do not read ~/.bashrc (Codex opens a new one per command) have no INKOS_BIN."""
+    local = Path.home() / ".local" / "bin" / "inkos"
+    if os.environ.get("INKOS_BIN"):
+        return os.environ["INKOS_BIN"]
+    if local.is_file() and os.access(local, os.X_OK):
+        return str(local)
+    return shutil.which("inkos") or "inkos"
 
 
 def inkos_cmd() -> list[str]:
@@ -543,9 +550,48 @@ def inkos_cmd() -> list[str]:
     return [binary]
 
 
+# install.sh --project (run by tools/setup-cloud.sh) records the project here, in the
+# git-ignored runtime folder, so commands find it without INKOS_AGENT_PROJECT.
+PROJECT_FILE = STATE / "project"
+
+
+def project_sources(args) -> list[tuple[str, str | None]]:
+    """Where the project can come from, in order: --project, $INKOS_AGENT_PROJECT, runtime/project, cwd."""
+    try:
+        recorded = PROJECT_FILE.read_text(encoding="utf-8").strip() or None
+    except OSError:
+        recorded = None
+    return [("--project", getattr(args, "project", None)),
+            ("INKOS_AGENT_PROJECT", os.environ.get("INKOS_AGENT_PROJECT") or None),
+            (str(PROJECT_FILE), recorded),
+            ("current folder", os.getcwd())]
+
+
+def project_choice(args) -> tuple[Path, str, list[tuple[str, str | None]]]:
+    sources = project_sources(args)
+    name, value = next((name, value) for name, value in sources if value)
+    return Path(value).expanduser().resolve(), name, sources
+
+
 def project_dir(args) -> Path:
-    value = getattr(args, "project", None) or os.environ.get("INKOS_AGENT_PROJECT") or os.getcwd()
-    return Path(value).expanduser().resolve()
+    return project_choice(args)[0]
+
+
+def project_missing(args) -> str | None:
+    """None when the chosen project has inkos.json, else the message to print (exit 3)."""
+    project, chosen, sources = project_choice(args)
+    if (project / "inkos.json").is_file():
+        return None
+    tried = "; ".join(f"{name}={value}" if value else f"{name}=(없음)" for name, value in sources)
+    return (f"프로젝트를 찾지 못함: {project} (inkos.json 없음, {chosen}에서 고름), 시도한 곳: {tried}. "
+            f"--project DIR 또는 INKOS_AGENT_PROJECT를 주거나, install.sh --project DIR로 {PROJECT_FILE}에 기록한다")
+
+
+def require_project(args) -> Path:
+    problem = project_missing(args)
+    if problem:
+        die(problem, 3)
+    return project_dir(args)
 
 
 def inkos_env(keep_proxy=False) -> dict:
@@ -580,6 +626,7 @@ def override_problems(project: Path) -> list[str]:
 
 
 def cmd_start(args):
+    require_project(args)
     STATE.mkdir(parents=True, exist_ok=True)
     foreign = foreign_bridge()
     if foreign:
@@ -642,7 +689,8 @@ def cmd_status(args):
 
 def cmd_doctor(args):
     ok = True
-    project = project_dir(args)
+    project, chosen, _ = project_choice(args)
+    missing = project_missing(args)
     binary = shutil.which(inkos_bin()) or inkos_bin()
     try:
         version = subprocess.run([binary, "--version"], capture_output=True, text=True, timeout=30).stdout.strip()
@@ -652,7 +700,7 @@ def cmd_doctor(args):
     ok &= bool(version)
     node = shutil.which("node")
     print(f"node         : {subprocess.run(['node', '--version'], capture_output=True, text=True).stdout.strip() if node else 'missing'}")
-    print(f"project      : {project} ({'ok' if (project / 'inkos.json').exists() else 'no inkos.json'})")
+    print(f"project      : {project} ({'ok' if not missing else 'no inkos.json'}, from {chosen})")
     foreign = foreign_bridge()
     if foreign:
         ok = False
@@ -668,6 +716,8 @@ def cmd_doctor(args):
     config = read_json(project / "inkos.json", {}) or {}
     if (config.get("llm") or {}).get("apiFormat") == "responses":
         print("note         : project apiFormat=responses; jobs force chat via INKOS_LLM_API_FORMAT")
+    if missing:
+        die(missing, 3)
     raise SystemExit(0 if ok else 1)
 
 
@@ -703,10 +753,10 @@ def strip_dashes(rest):
 
 
 def cmd_run(args):
-    project = project_dir(args)
     rest = strip_dashes(args.rest)
     if not rest:
         die("usage: inkos-agent run -- <inkos args>")
+    project = require_project(args)
     raise SystemExit(subprocess.call([*inkos_cmd(), *rest], cwd=project, env=inkos_env(args.keep_proxy)))
 
 
@@ -718,9 +768,9 @@ def cmd_job(args):
         foreign = foreign_bridge()
         if foreign:
             die(foreign, 3)
+        project = require_project(args)
         if not bridge_up():
             die("bridge is down; run `inkos-agent start` first")
-        project = project_dir(args)
         problems = override_problems(project)
         if problems and not args.allow_overrides:
             die("refusing to start: " + "; ".join(problems) + " (pass --allow-overrides to accept)")
@@ -1030,7 +1080,7 @@ def main(argv=None):
     sub = parser.add_subparsers(dest="cmd", required=True)
 
     def with_project(p):
-        p.add_argument("--project", help="InkOS project dir (default: $INKOS_AGENT_PROJECT or cwd)")
+        p.add_argument("--project", help="InkOS project dir (default: $INKOS_AGENT_PROJECT, then runtime/project, then cwd)")
         p.add_argument("--keep-proxy", action="store_true", help="do not strip HTTP(S)_PROXY for inkos")
         return p
 

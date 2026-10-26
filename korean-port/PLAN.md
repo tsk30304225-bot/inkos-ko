@@ -424,3 +424,10 @@ names, scene order, or signature combinations" 원칙을 그대로 지킨다). �
   - 원인 확인: `prepare:workspace-core`는 core 빌드만 한다. install은 pnpm 11이 스크립트 실행 전에 스스로 하는 의존성 단계다(작은 작업공간에서 확인).
   - 이 VM의 `node_modules`도 pnpm 10.28.0이 만든 것이었다. 9.15.9로 다시 설치했다.
   - 시험(pnpm 9.15.9 트리, 프록시 변수 제거, shim 경유): core 757 / studio 307 / cli 101 = 1,165 통과, 브리지 38/38, Drive 51/51, novel-brief 27/27, 설치 스크립트 56/56(+6). 설치된 pnpm 10.28.0은 `--version` 말고는 불리지 않았다.
+- 2026-10-26: **Codex 재확인(28ef5cb).** 설치는 통과했다(pnpm 9.15.9 via corepack). 명령마다 새 셸이 열려 `INKOS_AGENT_PROJECT`가 사라졌고, `book create`가 저장소 루트에서 돌아 실패했다.
+- 2026-10-26 (`claude/eeum-n0rsol`): **7-f `(stage 7-f)` — 프로젝트 경로를 셸 변수에 기대지 않기.** 근거는 `verification/stage-7f.md`.
+  - `install.sh --project`가 `runtime/project`(git 무시)에 프로젝트를 기록한다. 브리지는 `--project` → `INKOS_AGENT_PROJECT` → `runtime/project` → 현재 폴더 순으로 프로젝트를 정한다.
+    `inkos.json`이 없으면 doctor·start·job start·run이 exit 3으로 끝난다(job 없음, 시도한 곳 출력).
+  - InkOS 실행 파일: `INKOS_BIN` → `~/.local/bin/inkos` → PATH(원래는 `~/.local/bin`을 보지 않았다).
+  - 문서: ENV_TEST·브리지 AGENTS에 "명령마다 새 셸이 열리는 환경". RUNTIME에 기록 파일과 `INKOS_PNPM_PIN_CMD` 한 줄.
+  - 시험(프록시 변수 제거, shim 경유): core 757 / studio 307 / cli 101 = 1,165 통과, 브리지 38/38, 브리지 프로젝트 기록 14/14(새 파일, `env -i`), Drive 51/51, novel-brief 27/27, 설치 스크립트 57/57.

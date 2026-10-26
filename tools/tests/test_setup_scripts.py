@@ -93,6 +93,9 @@ check("~/.bashrc gets exactly two lines", bashrc.splitlines()[:1] == [MARK] and 
       and f'INKOS_AGENT_PROJECT="{project}"' in bashrc, bashrc)
 gi = (project / ".gitignore").read_text().splitlines() if (project / ".gitignore").exists() else []
 check("project .gitignore lists runtime/ and inkos.pre-agent.json", gi == ["runtime/", "inkos.pre-agent.json"], gi)
+recorded = base / "state" / "project"  # INKOS_AGENT_STATE of this case; by default tools/inkos-agent-bridge/runtime/
+check("the project is recorded in the bridge's runtime folder (runtime/project)",
+      recorded.is_file() and recorded.read_text().strip() == str(project.resolve()))
 r = run(SETUP, env, "--project", str(project), "--no-build")
 check("rerun of the same setup is not an 'existing installation'", r.returncode == 0, r.stdout + r.stderr)
 check("rerun keeps one ~/.bashrc block", (home / ".bashrc").read_text() == bashrc)

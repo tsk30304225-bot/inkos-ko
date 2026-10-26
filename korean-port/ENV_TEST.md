@@ -66,6 +66,8 @@ sh tools/setup-cloud.sh --project test-env      # 작품 프로젝트 폴더: <�
 
 ```sh
 export PATH="$HOME/.local/bin:$PATH" INKOS_BIN=$HOME/.local/bin/inkos INKOS_LOCALE=ko INKOS_AGENT_PROJECT=$PWD/test-env
+# 명령마다 새 셸이 열리는 환경(Codex 등)에서는 이 export가 다음 명령에 이어지지 않는다. 7-f부터는 없어도 된다:
+# inkos-agent가 setup이 기록한 tools/inkos-agent-bridge/runtime/project와 ~/.local/bin/inkos를 찾는다.
 tools/inkos-agent-bridge/inkos-agent doctor
 tools/inkos-agent-bridge/inkos-agent start
 ```
@@ -146,12 +148,13 @@ cmp /tmp/env-joined /tmp/test-env-<환경>_*_1화.tar.* && echo "join 일치"
 ```sh
 env -u HTTPS_PROXY -u https_proxy -u HTTP_PROXY -u http_proxy -u ALL_PROXY -u all_proxy PATH="$PWD/tools/pnpm-pin:$PATH" pnpm -r --no-bail test 2>&1 | grep -E "Tests |FAIL"
 python3 -I tools/inkos-agent-bridge/tests/test_bridge.py | tail -1
+python3 -I tools/inkos-agent-bridge/tests/test_project_file.py | tail -1
 python3 -I tools/tests/test_novel_drive.py | tail -1
 python3 -I tools/tests/test_novel_brief.py | tail -1
 python3 -I tools/tests/test_setup_scripts.py | tail -1
 ```
 
-실패 기준: 기준선은 core 757 · studio 307 · cli 101 = 1,165 통과, 브리지 38/38, Drive 51/51, novel-brief 27/27, 설치 스크립트 56/56(Claude Code, 7-e).
+실패 기준: 기준선은 core 757 · studio 307 · cli 101 = 1,165 통과, 브리지 38/38, 브리지 프로젝트 기록 14/14, Drive 51/51, novel-brief 27/27, 설치 스크립트 57/57(Claude Code, 7-f).
 통과 수가 이보다 적거나 실패가 하나라도 있으면 실패다. 실패한 시험 이름과 출력 원문을 보고하고, 고치지 않는다.
 
 ## 7. 보고 양식

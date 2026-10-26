@@ -70,6 +70,7 @@ case ":$PATH:" in *":$BIN:"*) ;; *) echo "add to PATH: export PATH=\"$BIN:\$PATH
 
 if [ -n "$PROJECT" ]; then
   mkdir -p "$PROJECT/.claude/agents"
+  PROJECT=$(cd "$PROJECT" && pwd)
   for f in AGENTS.md CLAUDE.md GROK.md .claude/agents/inkos-writer.md .claude/agents/inkos-reviewer.md; do
     dest="$PROJECT/$f"
     if [ -e "$dest" ] && [ $FORCE -eq 0 ] && ! cmp -s "$HERE/$f" "$dest"; then
@@ -85,6 +86,11 @@ if [ -n "$PROJECT" ]; then
       grep -qxF "$line" "$PROJECT/.gitignore" 2>/dev/null || echo "$line"
     done
   } | write_file - "$PROJECT/.gitignore" "$(mode_of "$PROJECT/.gitignore" 644)"
-  echo "project ready: $PROJECT (export INKOS_AGENT_PROJECT=$PROJECT)"
+  # Record the project for inkos-agent, so shells without INKOS_AGENT_PROJECT (Codex opens
+  # a new shell per command and does not read ~/.bashrc) still find it. runtime/ is git-ignored.
+  STATE_DIR="${INKOS_AGENT_STATE:-$HERE/runtime}"
+  mkdir -p "$STATE_DIR"
+  printf '%s\n' "$PROJECT" | write_file - "$STATE_DIR/project"
+  echo "project ready: $PROJECT (recorded in $STATE_DIR/project)"
 fi
 "$HERE/inkos-agent" --version >/dev/null && echo "inkos-agent installed. Next: inkos-agent doctor && inkos-agent start"

@@ -18,7 +18,12 @@ inkos-agent start             # bridge in the background (idempotent)
 `doctor` must not report `modelOverrides ... bypasses the bridge`; such an
 override would make InkOS call a real API. Ask the user before changing it.
 
-The project directory is `$INKOS_AGENT_PROJECT`, `--project DIR`, or the cwd.
+The project directory is `--project DIR`, else `$INKOS_AGENT_PROJECT`, else the one
+`install.sh --project` recorded in `runtime/project`, else the cwd. When the chosen
+folder has no `inkos.json`, `doctor`, `start`, `job start` and `run` exit 3 and list
+where they looked. InkOS itself is `$INKOS_BIN`, else `~/.local/bin/inkos`, else `inkos` on PATH.
+Environments that open a new shell per command (Codex and others) lose exports and
+do not read `~/.bashrc`; since 7-f no export is needed for the project or InkOS.
 Short commands without model calls (`book list`, `status`, `export`) can run in
 the foreground: `inkos-agent run -- book list --json`.
 
