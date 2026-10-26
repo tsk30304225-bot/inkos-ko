@@ -12,7 +12,7 @@ import { KOREAN_GENRE_IDS, resolveKoreanGenre } from "../skills/korean-genre-ref
 
 // Korean versions of upstream skills (same IDs) and Korean-only skills.
 const KOREAN_SKILL_IDS = ["inkos-long-writing", "inkos-story-review", "inkos-story-deslop", "inkos-short-writing", "inkos-script-writing"];
-const KOREAN_ONLY_SKILL_IDS = ["inkos-ko-explainer-script"];
+const KOREAN_ONLY_SKILL_IDS = ["inkos-ko-explainer-script", "inkos-ko-light-murim"];
 
 async function projectWith(language: string | undefined) {
   const root = await mkdtemp(join(tmpdir(), "inkos-ko-skills-"));

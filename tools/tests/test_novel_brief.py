@@ -34,7 +34,13 @@ r = run("interview", str(brief), "--answer", "1=1", "--answer", "2=기타:3인�
 text = brief.read_text(encoding="utf-8")
 check("--answer writes the chosen option and free text into the brief",
       "## 장르\n라이트 무협 (light-martial)" in text and "## 서술 시점\n3인칭 주인공 제한, 가끔 악역 시점" in text, text)
-check("answered items are not asked again", r.stdout.count("[선택 ") == 5 and "장르" not in r.stdout.split("\n")[0], r.stdout)
+check("answered items are not asked again (light martial adds the 문체 question)",
+      r.stdout.count("[선택 ") == 6 and "장르" not in r.stdout.split("\n")[0]
+      and "] 문체\n  1) 기본 라이트 무협 (추천)\n  2) 경쾌한 코믹 라이트 무협" in r.stdout, r.stdout)
+other = tmp / "brief-fantasy.md"
+run("interview", str(other), "--answer", "1=2")
+r = run("interview", str(other))
+check("other genres are not asked the 문체 question", r.returncode == 0 and "문체" not in r.stdout and r.stdout.count("[선택 ") == 6, r.stdout)
 
 brief.write_text(text.replace("## 서술 시점\n3인칭 주인공 제한, 가끔 악역 시점", "## 서술 시점\n미정"), encoding="utf-8")
 r = run("interview", str(brief), "--json")
@@ -139,6 +145,20 @@ check("--plan (batch) prints the context and records 일괄",
 r = run("direct", str(work), "--text", "5화는 장터 대신 대장간 안에서만 진행한다.")
 check("--text records the author's own words first",
       r.stdout.startswith("5화는 장터 대신 대장간 안에서만 진행한다.\n작가가 정한 선택:") and "- 방식: 대화형(직접 지시)" in (story / "author_directions.md").read_text(encoding="utf-8"), r.stdout)
+
+# ---------- 문체 preset: written by interview --work from the brief ----------
+preset = story / "korean_style_preset"
+r = run("interview", "--work", str(work))
+check("a brief without the comic style writes no preset", r.returncode == 0 and not preset.exists() and "문체 프리셋" not in r.stdout, r.stdout)
+brief_path = story / "brief.md"
+brief_path.write_text(brief_path.read_text(encoding="utf-8") + "\n## 문체\n경쾌한 코믹 라이트 무협\n", encoding="utf-8")
+r = run("interview", "--work", str(work))
+check("the comic style writes story/korean_style_preset once", r.returncode == 0 and preset.read_text(encoding="utf-8") == "light-murim-comic\n"
+      and "정해짐: 문체 프리셋: light-murim-comic" in r.stdout, r.stdout)
+brief_path.write_text(brief_path.read_text(encoding="utf-8").replace("## 장르\n라이트 무협", "## 장르\n판타지"), encoding="utf-8")
+preset.unlink()
+r = run("interview", "--work", str(work))
+check("the comic style counts only for light martial", not preset.exists(), r.stdout)
 
 print(f"\n{sum(results)}/{len(results)} passed")
 sys.exit(0 if all(results) else 1)

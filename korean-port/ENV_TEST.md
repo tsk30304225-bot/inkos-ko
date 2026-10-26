@@ -96,6 +96,7 @@ command -v xz || echo "xz 실행 파일 없음"
    python3 tools/novel-brief.py interview test-env/briefs/brief.md --answer 1=1 --answer 2=1 --answer 3=1 --answer 4=1 --answer 5=1 --answer 6=2 --answer 7=1
    ```
    답은 첫 명령이 출력한 질문 번호를 보고 정한다. 위 `--answer`는 질문이 7개일 때의 예시다(질문 수가 다르면 그 번호에 맞춘다).
+   장르를 라이트 무협으로 고르면 `문체` 질문이 하나 더 나온다. 그 출력의 번호로 한 번 더 답한다(이 시험은 1) 기본).
    마지막 출력이 `물을 항목 없음`이어야 한다.
 2. 작품 만들기(제목이 `test-env-…`로 시작해야 ID가 `test-env-…`가 된다):
    ```sh

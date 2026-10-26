@@ -55,7 +55,7 @@ export async function attachKoreanGenreReference(
   return activations.map((item, i) => i === index ? { ...item, resources } : item);
 }
 
-async function readBookGenre(projectRoot?: string, bookId?: string): Promise<string | undefined> {
+export async function readBookGenre(projectRoot?: string, bookId?: string): Promise<string | undefined> {
   if (!projectRoot || !bookId || !/^[\p{L}\p{N}][\p{L}\p{N}._-]*$/u.test(bookId) || bookId.includes("..")) return undefined;
   for (const path of [join(projectRoot, "works", bookId, "source", "book.json"), join(projectRoot, "books", bookId, "book.json")]) {
     try {

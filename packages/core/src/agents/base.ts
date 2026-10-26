@@ -14,6 +14,7 @@ import { SourcedReviewIndexToolSchema, ArtifactReviewIndexToolSchema } from "./r
 import { resolveObservationSources } from "../models/observation.js";
 import { attachKoreanGenreReference } from "../skills/korean-genre-references.js";
 import { koreanReviewSkillActivations, koreanReviewSkillIds } from "../skills/korean-review-skills.js";
+import { attachKoreanGenreSkill } from "../skills/korean-genre-skills.js";
 import {
   hydrateActivatedSkillGuidance,
   type ActivatedSkillGuidance,
@@ -142,7 +143,8 @@ export async function prepareWorkerMessages(
     // Navigation and other read-only semantic mechanics need the source and
     // author request, without a writing method encouraging broader changes.
     const hydrated = professionalGuidance ? await hydrateActivatedSkillGuidance(selectedSkills, query) : [];
-    const activations = hydrated ? await attachKoreanGenreReference(hydrated, { work, projectRoot: context.projectRoot, bookId: context.bookId }) : hydrated;
+    const withGenre = hydrated ? await attachKoreanGenreReference(hydrated, { work, projectRoot: context.projectRoot, bookId: context.bookId }) : hydrated;
+    const activations = professionalGuidance ? await attachKoreanGenreSkill(withGenre, { work, projectRoot: context.projectRoot, bookId: context.bookId, workerId, messages }) : withGenre;
     recordExecutionEvidence("skills-applied", { worker: workerId, skills: activations?.map(({ skill, resources }) => ({
       id: skill.id, source: skill.source, hash: createHash("sha256").update(skill.body).digest("hex"),
       references: resources.map(resource => ({ path: resource.path, charStart: resource.charStart, charEnd: resource.charEnd,

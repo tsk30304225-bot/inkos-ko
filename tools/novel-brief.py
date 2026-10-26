@@ -12,7 +12,10 @@ Standard library only.
       --answer records an answer (option number, or free text) into the brief.
   novel-brief.py interview --work <works/ID> [--answer N=선택 ...] [--json]
       After the design: questions for author choices the design left 미정,
-      skipping what the brief or author_directions.md already answers.
+      skipping what the brief or author_directions.md already answers. For a
+      light-martial brief whose 문체 answer is the comic style it also writes
+      source/story/korean_style_preset (light-murim-comic), which turns on the
+      inkos-ko-light-murim style skill for that work.
   novel-brief.py next <works/ID> [--json]
       Briefing for the next chapter, ending with numbered choices.
   novel-brief.py direct <works/ID> (--choice K | --text TEXT | --plan) [-o FILE]
@@ -49,6 +52,12 @@ BRIEF_ITEMS = [
     ("금지 사항", ["따로 없음", "잔혹 묘사·성적 묘사 금지"], 1, ""),
     ("결말 방향", ["성장·성취 (해피엔딩)", "씁쓸한 승리", "열린 결말"], 0, ""),
 ]
+
+# Asked only once the brief's 장르 is light martial (the style preset applies to that genre only).
+STYLE_ITEM = ("문체", ["기본 라이트 무협", "경쾌한 코믹 라이트 무협"], 0, "")
+STYLE_PRESET_FILE = "korean_style_preset"
+STYLE_PRESET = "light-murim-comic"
+LIGHT_MARTIAL_WORDS = ("light-martial", "라이트 무협", "라이트무협", "무협")
 
 # Design 미정 items: known names get options; the brief heading that may already answer them.
 DESIGN_ITEMS = {
@@ -148,14 +157,31 @@ def parse_answers(values: list[str]) -> dict[int, str]:
 
 # ---------- interview (brief) ----------
 
+def is_light_martial(genre: str | None) -> bool:
+    return decided(genre) and any(word in genre.lower() for word in LIGHT_MARTIAL_WORDS)
+
+
 def brief_questions(brief_text: str) -> list[dict]:
     found = sections(brief_text)
+    items = BRIEF_ITEMS + ([STYLE_ITEM] if is_light_martial(found.get("장르")) else [])
     questions = []
-    for title, options, recommended, why in BRIEF_ITEMS:
+    for title, options, recommended, why in items:
         if decided(found.get(title)):
             continue
         questions.append({"title": title, "options": options, "recommended": recommended, "why": why})
     return questions
+
+
+def sync_style_preset(src: Path) -> str | None:
+    """Write story/korean_style_preset when the work's brief chose the comic light-martial style."""
+    brief = sections(read_text(src / "story" / "brief.md"))
+    style = brief.get("문체", "")
+    if not (is_light_martial(brief.get("장르")) and decided(style) and "코믹" in style):
+        return None
+    path = src / "story" / STYLE_PRESET_FILE
+    if read_text(path).strip() != STYLE_PRESET:
+        path.write_text(STYLE_PRESET + "\n", encoding="utf-8")
+    return f"문체 프리셋: {STYLE_PRESET} (브리프 '문체', story/{STYLE_PRESET_FILE})"
 
 
 def set_section(markdown: str, title: str, body: str) -> str:
@@ -237,6 +263,7 @@ def append_design_answers(src: Path, entries: list[tuple[str, str]]) -> None:
 
 
 def interview_work(src: Path, answers: dict[int, str], as_json: bool) -> None:
+    preset = sync_style_preset(src)
     questions, settled = design_questions(src)
     if answers:
         entries = []
@@ -247,7 +274,7 @@ def interview_work(src: Path, answers: dict[int, str], as_json: bool) -> None:
             entries.append((question["title"], resolve_answer(raw, question["options"])))
         append_design_answers(src, entries)
         questions, settled = design_questions(src)
-    emit(questions, as_json, src / "story" / DIRECTIONS, settled)
+    emit(questions, as_json, src / "story" / DIRECTIONS, ([preset] if preset else []) + settled)
 
 
 def emit(questions: list[dict], as_json: bool, target: Path, settled: list[str] | None = None) -> None:

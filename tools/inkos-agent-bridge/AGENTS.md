@@ -181,7 +181,10 @@ Author choices (interactive by default): do not decide what the author decides.
 Ask with `python3 tools/novel-brief.py` (numbered questions the user can answer
 by number), and run `pack --resume` (storage policy below) before waiting for
 an answer. Before `book create`: `novel-brief.py interview <brief.md>`; after
-the design: `interview --work works/<ID>`; before each chapter: `next
+the design: `interview --work works/<ID>` (for a light-martial brief whose 문체 is the
+comic style it writes `source/story/korean_style_preset`, which turns on the
+`inkos-ko-light-murim` style skill; planner memos then carry `장면 유형:` and, in fight
+chapters, `전투 패턴: C? → C?`); before each chapter: `next
 works/<ID>`, then `direct works/<ID> --choice K -o FILE` and `write next <ID>
 --context-file FILE` (the same text is appended to
 `source/story/author_directions.md`). Items already answered in the brief or
