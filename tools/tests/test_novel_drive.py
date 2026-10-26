@@ -121,6 +121,52 @@ check("unpack ok", r.returncode == 0 and (tmp / "restored/works/달빛/source/ch
 r = run("unpack", str(out), str(tmp / "restored"))
 check("unpack refuses to overwrite a project without --force", r.returncode != 0)
 
+# --force only overwrites a freshly initialised project; work needs --overwrite-work (with a backup).
+fresh_init = tmp / "fresh-init"
+(fresh_init / "works").mkdir(parents=True)
+(fresh_init / "inkos.json").write_text('{"name": "novel", "language": "ko"}\n', encoding="utf-8")
+(fresh_init / ".gitignore").write_text(".env\nnode_modules/\n.DS_Store\n", encoding="utf-8")
+r = run("unpack", str(out), str(fresh_init), "--force")
+check("--force overwrites a freshly initialised project", r.returncode == 0
+      and (fresh_init / "works/달빛/source/chapters/0001_시작.md").read_text(encoding="utf-8").endswith("본문"), r.stdout + r.stderr)
+check("--force on a fresh project makes no backup", not list(tmp.glob("fresh-init.before-unpack-*")))
+
+held = tmp / "restored"
+held_chapter = held / "works/달빛/source/chapters/0001_시작.md"
+held_chapter.write_text(held_chapter.read_text(encoding="utf-8") + "\n로컬에서 고친 줄", encoding="utf-8")
+(held / "works/달빛/source/chapters/0002_새_회차.md").write_text("# 2화\n아직 올리지 않은 원고", encoding="utf-8")
+before = {p.relative_to(held).as_posix(): p.read_bytes() for p in held.rglob("*") if p.is_file()}
+r = run("unpack", str(out), str(held), "--force")
+check("--force on a project with work stops with exit 3", r.returncode == 3 and "already holds work" in r.stderr
+      and "works/달빛/source/chapters/0002_새_회차.md" in r.stderr and "--overwrite-work" in r.stderr, r.stdout + r.stderr)
+after = {p.relative_to(held).as_posix(): p.read_bytes() for p in held.rglob("*") if p.is_file()}
+check("exit 3 leaves every byte as it was", before == after and not list(tmp.glob("restored.before-unpack-*")))
+script_only = tmp / "script-only"
+(script_only / "works/대본/source").mkdir(parents=True)
+(script_only / "inkos.json").write_text("{}", encoding="utf-8")
+(script_only / "works/대본/work.json").write_text('{"profile": "script"}', encoding="utf-8")
+(script_only / "works/대본/source/script.md").write_text("# 1화 대본", encoding="utf-8")
+r = run("unpack", str(out), str(script_only), "--force")
+check("a work without chapter files (script) is protected too", r.returncode == 3 and "works/대본/work.json" in r.stderr, r.stderr)
+legacy = tmp / "legacy"
+(legacy / "books/옛책/chapters").mkdir(parents=True)
+(legacy / "inkos.json").write_text("{}", encoding="utf-8")
+(legacy / "books/옛책/chapters/0001.md").write_text("1.8 원고", encoding="utf-8")
+r = run("unpack", str(out), str(legacy), "--force")
+check("1.8-layout chapters (books/*/chapters) are protected too", r.returncode == 3 and "books/옛책/chapters/0001.md" in r.stderr, r.stderr)
+
+r = run("unpack", str(out), str(held), "--overwrite-work")
+backups = sorted(tmp.glob("restored.before-unpack-*.tar.*"))
+check("--overwrite-work writes one backup beside dest and prints it", r.returncode == 0 and len(backups) == 1
+      and str(backups[0]) in r.stdout and "do not commit or upload" in r.stdout, r.stdout + r.stderr)
+if backups:
+    with tarfile.open(backups[0]) as tar:
+        saved = {m.name: tar.extractfile(m).read() for m in tar.getmembers() if m.isfile()}
+    check("the backup holds the original manuscripts byte for byte",
+          saved.get("works/달빛/source/chapters/0001_시작.md") == before["works/달빛/source/chapters/0001_시작.md"]
+          and saved.get("works/달빛/source/chapters/0002_새_회차.md") == before["works/달빛/source/chapters/0002_새_회차.md"], sorted(saved))
+check("--overwrite-work then overwrites from the archive", held_chapter.read_text(encoding="utf-8").endswith("본문"))
+
 # xz is the default format; gz archives made before the switch still unpack.
 r = run("pack", str(project), "-o", str(tmp / "plain"))
 xz_out = tmp / "plain.tar.xz"

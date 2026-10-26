@@ -12,11 +12,11 @@ settings - never from the command line or chat:
   INKOS_GDRIVE_FOLDER_ID   (the Drive folder that holds the archives)
 
   novel-drive.py pack  <project> [out.tar.xz | -o out.tar.xz] [--resume] [--gz]
-  novel-drive.py unpack <archive> <dest>          # .tar.xz or .tar.gz, detected from the content
+  novel-drive.py unpack <archive> <dest> [--force | --overwrite-work]   # .tar.xz or .tar.gz, detected from the content
   novel-drive.py split <archive> [out_dir] [--part-size 12000]   # parts + <archive>.parts.json
   novel-drive.py join  <archive>.parts.json [-o out.tar.gz]      # checks every sha256
   novel-drive.py push  <project> [--keep 10]      # OAuth push/pull/list/init-folder: 선택, 앱이 쓰지 않음
-  novel-drive.py pull  <dest> [--name ARCHIVE_NAME] [--force]
+  novel-drive.py pull  <dest> [--name ARCHIVE_NAME] [--force | --overwrite-work]
   novel-drive.py list
   novel-drive.py init-folder [--name inkos-novels]   # create the archive folder, print its id
 
@@ -24,6 +24,11 @@ Overwrite protection: `pull` records the restored archive in <project>/.inkos-dr
 `push` refuses when Drive's newest archive of the same work is not that recorded base
 (another session pushed in between, or this copy was never restored from Drive);
 `--force` overrides. A successful push records the new archive as the base.
+
+Unpack protection: an existing project needs --force, and --force only overwrites a
+freshly initialised project (no work in works/ or books/). When dest already holds a
+work or chapter manuscripts, unpack stops with exit 3; --overwrite-work first packs
+the whole of dest to <dest>.before-unpack-<UTC>.tar.xz beside it, then overwrites.
 
 Use the narrow `drive.file` OAuth scope: the tool can then see only files it
 created, so create the folder with init-folder rather than in the Drive UI.
@@ -179,14 +184,53 @@ def pack_bytes(project: Path, resume: bool = False, fmt: str = "gz") -> bytes:
     return buffer.getvalue()
 
 
-def unpack_bytes(data: bytes, dest: Path, force: bool) -> int:
-    dest.mkdir(parents=True, exist_ok=True)
-    if (dest / "inkos.json").exists() and not force:
-        die(f"{dest} already contains a project; pass --force to overwrite files from the archive")
-    count = 0
+# What makes a project more than a fresh `inkos init`: works (2.0 works/<id>/, whose
+# long-form chapters are source/chapters/NNNN_<title>.md and whose script/explainer
+# drafts are other files in source/) and 1.8-layout books/<id>/chapters/*.md.
+WORK_PATTERNS = ("works/*/work.json", "works/*/source/chapters/*.md", "books/*/chapters/*.md")
+
+
+def existing_work(dest: Path) -> list[str]:
+    found: list[str] = []
+    for pattern in WORK_PATTERNS:
+        found += [path.relative_to(dest).as_posix() for path in sorted(dest.glob(pattern)) if path.is_file()]
+    return found
+
+
+def backup_before_unpack(dest: Path) -> Path:
+    fmt = "xz" if xz_available() else "gz"
+    stamp = time.strftime("%Y%m%d-%H%M%S", time.gmtime())
+    backup = dest.parent / f"{dest.name}.before-unpack-{stamp}.tar.{fmt}"
+    data = pack_bytes(dest, fmt=fmt)
+    with open(backup, "xb") as out:  # never replace an earlier backup
+        out.write(data)
+    return backup
+
+
+def unpack_bytes(data: bytes, dest: Path, force: bool, overwrite_work: bool = False) -> int:
     if data.startswith(b"\xfd7zXZ\x00") and not xz_available():
         die("this is an xz archive (.tar.xz) but the Python lzma module is not available; "
             "unpack it elsewhere or use `tar -xJf` with the xz tool")
+    try:
+        with tarfile.open(fileobj=io.BytesIO(data), mode="r:*") as tar:
+            tar.getmembers()
+    except (tarfile.TarError, EOFError, OSError) as error:
+        die(f"not a readable archive: {error}")
+    if (dest / "inkos.json").exists():
+        work = existing_work(dest)
+        if work and not overwrite_work:
+            shown = ", ".join(work[:5]) + (f" and {len(work) - 5} more" if len(work) > 5 else "")
+            die(f"{dest} already holds work ({shown}); nothing was changed. --force only overwrites a freshly "
+                "initialised project. Stop and ask the user: --overwrite-work first packs the whole of "
+                f"{dest} to {dest.name}.before-unpack-<UTC>.tar.xz beside it, then overwrites", 3)
+        if not (force or overwrite_work):
+            die(f"{dest} already contains a project; pass --force to overwrite files from the archive")
+        if overwrite_work:
+            backup = backup_before_unpack(dest)
+            print(f"backed up {dest} ({len(work)} work files) to {backup} before overwriting; "
+                  "it holds the manuscripts, so do not commit or upload it")
+    dest.mkdir(parents=True, exist_ok=True)
+    count = 0
     with tarfile.open(fileobj=io.BytesIO(data), mode="r:*") as tar:
         for member in tar.getmembers():
             rel = PurePosixPath(member.name)
@@ -340,14 +384,17 @@ def main(argv: list[str] | None = None) -> None:
     p = sub.add_parser("pack"); p.add_argument("project"); p.add_argument("archive", nargs="?"); p.add_argument("-o", "--output")
     p.add_argument("--resume", action="store_true", help="only what continuing the work needs (no history)")
     p.add_argument("--gz", action="store_true", help="write gzip (.tar.gz) instead of the default xz")
-    p = sub.add_parser("unpack"); p.add_argument("archive"); p.add_argument("dest"); p.add_argument("--force", action="store_true")
+    p = sub.add_parser("unpack"); p.add_argument("archive"); p.add_argument("dest")
+    p.add_argument("--force", action="store_true", help="overwrite a freshly initialised project (no works yet)")
+    p.add_argument("--overwrite-work", action="store_true", help="overwrite a project that holds work, after backing it up beside it")
     p = sub.add_parser("split"); p.add_argument("archive"); p.add_argument("out_dir", nargs="?")
     p.add_argument("--part-size", type=int, default=PART_SIZE)
     p = sub.add_parser("join"); p.add_argument("manifest"); p.add_argument("-o", "--output")
     p = sub.add_parser("push"); p.add_argument("project"); p.add_argument("--keep", type=int, default=10)
     p.add_argument("--force", action="store_true", help="push even if Drive's newest archive is not this copy's base")
     p = sub.add_parser("pull"); p.add_argument("dest"); p.add_argument("--name"); p.add_argument("--key", help="work key (archive name part)")
-    p.add_argument("--force", action="store_true")
+    p.add_argument("--force", action="store_true", help="overwrite a freshly initialised project (no works yet)")
+    p.add_argument("--overwrite-work", action="store_true", help="overwrite a project that holds work, after backing it up beside it")
     sub.add_parser("list")
     p = sub.add_parser("init-folder"); p.add_argument("--name", default="inkos-novels")
     args = parser.parse_args(argv)
@@ -361,7 +408,7 @@ def main(argv: list[str] | None = None) -> None:
         out.write_bytes(data)
         print(f"packed {project} -> {out} ({len(data)} bytes)")
     elif args.command == "unpack":
-        count = unpack_bytes(Path(args.archive).read_bytes(), Path(args.dest), args.force)
+        count = unpack_bytes(Path(args.archive).read_bytes(), Path(args.dest), args.force, args.overwrite_work)
         print(f"unpacked {count} files into {args.dest}")
     elif args.command == "split":
         archive = Path(args.archive)
@@ -418,7 +465,7 @@ def main(argv: list[str] | None = None) -> None:
             if not archives:
                 die("no archive found in the Drive folder")
             chosen = archives[0]
-            count = unpack_bytes(download(token, chosen["id"]), Path(args.dest), args.force)
+            count = unpack_bytes(download(token, chosen["id"]), Path(args.dest), args.force, args.overwrite_work)
             write_base(Path(args.dest), chosen["name"], chosen.get("id"))
             print(f"restored {chosen['name']} ({count} files) into {args.dest}; base recorded in {BASE_FILE}")
 

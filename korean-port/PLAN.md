@@ -405,3 +405,10 @@ names, scene order, or signature combinations" 원칙을 그대로 지킨다). �
     - 시험 작품으로 확인했다: `status`가 원본과 같다.
   - 백업 폴더는 restore 뒤 지워도 된다(한 줄).
   - 시험(프록시 변수 제거): core 757 / studio 307 / cli 101 = 1,165 통과, 브리지 38/38, Drive 38/38, novel-brief 27/27, 설치 스크립트 50/50.
+- 2026-10-26 (`claude/eeum-n0rsol`): **7-d `(stage 7-d)` — `unpack --force` 범위 제한.** 감독 승인: 7-b 보완·7-c. 근거는 `verification/stage-7d.md`.
+  - `novel-drive.py unpack`/`pull`: 대상에 원고가 있으면 `--force`여도 exit 3으로 거부하고 아무것도 바꾸지 않는다.
+    - 원고로 보는 것: `works/*/work.json`, `works/*/source/chapters/*.md`, `books/*/chapters/*.md`.
+    - `--force`는 방금 `init`만 한 빈 프로젝트에서만 통한다.
+  - `--overwrite-work`: 대상 폴더 전체를 옆에 `<dest>.before-unpack-<UTC>.tar.xz`로 백업하고, 그 경로를 출력한 뒤 덮는다.
+  - RUNTIME "작업 시작과 끝"·보관 절, 브리지 AGENTS: "원고가 있으면 도구가 거부, 멈추고 사용자에게 묻는다"를 적었다.
+  - 시험(프록시 변수 제거): core 757 / studio 307 / cli 101 = 1,165 통과, 브리지 38/38, Drive 47/47(+9), novel-brief 27/27, 설치 스크립트 50/50. 옛 코드는 새 시험 5개가 실패한다.
