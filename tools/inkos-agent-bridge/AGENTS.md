@@ -129,12 +129,22 @@ The main session coordinates; subagents answer requests.
   Install one Node version with one tool. Two overlapping installs broke npm's own
   files once (`Class extends value undefined` during a build). Check `node -v` and
   `npm -v` before building.
+- Codex (default): no repository is attached; the task starts in an empty
+  `/workspace` with internet. Inside the task run
+  `git clone -b claude/eeum-n0rsol https://github.com/tsk30304225-bot/inkos-ko && cd inkos-ko` and `sh tools/setup-cloud.sh`.
+  `/workspace` does not survive the task, so a real work starts each time with
+  clone → setup → newest archive from Drive 'Inkos ko' → `novel-drive.py unpack
+  <archive> novel --force` (the fresh empty project only) → `status`, and ends by
+  uploading an archive (Grok and Claude Code cloud do the same after a VM is
+  reclaimed; see RUNTIME "작업 시작과 끝"). `setup/codex-cloud-setup.sh` is for a
+  Codex environment with the repository attached and has not been checked.
 - One installation per machine at a time. `install.sh` and `tools/setup-cloud.sh`
   stop with exit 3 when `~/.local/bin/inkos-agent` (or `inkos`, `~/.bashrc`'s
   inkos-ko block) belongs to another installation; `--replace` backs them up to
   `~/.local/bin/.inkos-ko-backup/<time>/` with a `restore.sh`. A bridge on the port
   whose `/health` `state` is not this runtime folder is another installation's:
   `doctor` warns, `start` and `job start` exit 3. Report it; do not stop it yourself.
+  The backup folder stays after `restore.sh`; it may be deleted then.
 - Role card folders: zh/en works use `roles/主要角色`·`roles/次要角色`; Korean (ko)
   works in the Korean fork use `roles/major`·`roles/minor`. The engine reads all four.
   Do not move cards by hand.

@@ -391,3 +391,17 @@ names, scene order, or signature combinations" 원칙을 그대로 지킨다). �
 - 2026-10-26 (`claude/eeum-n0rsol`): **7-b 보완 `(stage 7-b)`.** 감독 승인: 7-b(작은 보완 3건). 근거는 `verification/stage-7b.md` "승인 후 보완".
   - 설치 스크립트 시험이 빌드 없이 돎(임시 저장소 + 가짜 빌드 산출물, `tools/`만 있는 복사본에서 확인). 링크인 `~/.bashrc`는 고치지 않고 2줄 출력. `~/.bashrc`·`.gitignore` 권한 유지.
   - 시험(프록시 변수 제거): core 757 / studio 307 / cli 101 = 1,165 통과, 브리지 38/38, Drive 38/38, novel-brief 27/27, 설치 스크립트 50/50.
+- 2026-10-26: **Grok 설치 안전성 재확인 통과(5a9afd9).**
+  - `--replace` 없이 실행: 예전 설치(npm 1.8 링크, 브리지 1.1.0)를 찾아 exit 3으로 멈췄고, 상태 diff 0이었다.
+  - `--replace`로 실행: 설치된 pnpm 10.34.6 대신 `npx -y pnpm@9.15.9`로 실행했다. doctor·start·`/health`(1.2.0) 모두 정상이었다.
+  - `restore.sh` 뒤: 원래 상태와 같았다(링크 시각과 pid만 다름). 다른 클론의 `dist/index.js` sha256은 처음부터 끝까지 그대로였다.
+  - Codex 재확인은 브랜치를 지정한 새 작업으로 다시 하기로 했다. 지난번에는 `claude/eeum-n0rsol`이 아닌 브랜치로 시작했거나 저장소가 연결되지 않았던 것으로 추정한다.
+- 2026-10-26 (`claude/eeum-n0rsol`): **7-c `(stage 7-c)` — Codex 기본 경로와 작업 시작·끝.** 감독 승인: 7-b. 근거는 `verification/stage-7c.md`.
+  - 7-b 승인 스레드의 보완 1~3은 이미 `f0bfe09`에 들어갔다.
+  - Codex 문서의 기본 경로를 "작업 안에서 clone → setup"으로 바꿨다(RUNTIME·ENV_TEST·브리지 AGENTS). `codex-cloud-setup.sh`는 "저장소를 연결한 환경용, 확인하지 않음"으로 표시했다.
+  - RUNTIME "작업 시작과 끝"을 넣었다.
+    - 시작: clone → setup → Drive 압축본 → `unpack --force`(방금 만든 빈 프로젝트만) → `status` → 이어 쓰기.
+    - 끝: 압축본을 올린다. Grok과 Claude Code도 VM이 회수되면 같은 순서다.
+    - 시험 작품으로 확인했다: `status`가 원본과 같다.
+  - 백업 폴더는 restore 뒤 지워도 된다(한 줄).
+  - 시험(프록시 변수 제거): core 757 / studio 307 / cli 101 = 1,165 통과, 브리지 38/38, Drive 38/38, novel-brief 27/27, 설치 스크립트 50/50.

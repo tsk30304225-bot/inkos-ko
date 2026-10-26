@@ -20,6 +20,7 @@ sh tools/setup-cloud.sh            # 기본 작품 프로젝트: <저장소>/nov
 이미 있는 설치: 바꾸기 전에 `~/.local/bin/inkos`, `~/.local/bin/inkos-agent`, `~/.bashrc`의 `# inkos-ko setup` 블록을 모두 확인한다.
 하나라도 다른 설치의 것이면 무엇이 어디를 가리키는지 출력하고 **exit 3**으로 멈춘다(아무것도 바꾸지 않음). `--replace`를 주면
 셋을 링크 그대로 `~/.local/bin/.inkos-ko-backup/<UTC 시각>/`에 복사하고(`README`, `restore.sh`) 바꾼다. 되돌리기는 `sh <백업 폴더>/restore.sh`.
+백업 폴더는 restore 뒤에도 남는다. restore 뒤에는 지워도 된다.
 파일은 링크를 따라 쓰지 않는다(임시 파일에 쓰고 이름 바꾸기, 권한 유지). `~/.bashrc`에 덧붙이는 것은 2줄(`# inkos-ko setup`과 `export …`)이고, 지우면 되돌아간다.
 `~/.bashrc`가 링크(dotfiles 관리 도구 등)이면 고치지 않고 그 2줄을 출력하며, 백업·되돌리기 대상에서도 빠진다.
 브리지(`/health`)는 자기 runtime 폴더(`state`)를 알려 준다. 포트의 브리지가 이 설치의 것이 아니면 `doctor`는 경고, `start`·`job start`는 exit 3.
@@ -102,6 +103,23 @@ inkos-agent wait --job $JOB --timeout 90     # 브리지 1.2: 항상 exit 0, 첫
 - 쓴 경로와 파일 이름(원본 크기·sha256 포함)을 사용자에게 보고한다. 어느 경로도 안 되면 실패 사실과 이유를 보고에 적는다.
 - 세션 시작: 받은 압축본을 unpack하기 전에 파일 이름, 마지막 회차, sha256을 사용자에게 보여주고 확인받는다.
 - 한 작품을 두 환경에서 동시에 작업하지 않는다.
+
+### 작업 시작과 끝 (작업 공간이 남지 않을 때)
+Codex는 작업이 끝나면 `/workspace`가 남지 않는다고 가정한다. Grok과 Claude Code 클라우드도 VM이 회수되면 같다. 실제 작품은 작업을 시작할 때마다 이 순서로 한다.
+
+```sh
+git clone -b claude/eeum-n0rsol https://github.com/tsk30304225-bot/inkos-ko && cd inkos-ko
+sh tools/setup-cloud.sh                       # 빈 novel/ 프로젝트가 생긴다
+export PATH="$HOME/.local/bin:$PATH" INKOS_BIN=$HOME/.local/bin/inkos INKOS_LOCALE=ko INKOS_AGENT_PROJECT=$PWD/novel
+# Drive 'Inkos ko'에서 그 작품의 가장 늦은 압축본을 받는다(조각이면 join). 이름·마지막 회차·sha256을 사용자에게 보여 주고 확인받는다.
+python3 tools/novel-drive.py unpack <압축본> novel --force   # 방금 만든 빈 프로젝트라서 --force. 원고가 있는 프로젝트에는 쓰지 않는다.
+tools/inkos-agent-bridge/inkos-agent run -- status <작품ID>   # 마지막 회차가 압축본 이름과 맞는지 확인
+```
+
+- 압축본 뒤 회차의 원고 `.md`가 Drive에 있으면 위 "받기"대로 사용자에게 묻는다. 그다음 이어 쓴다(올리는 때는 위와 같다).
+- 작업을 끝낼 때: 마지막으로 올린 압축본 뒤에 바뀐 것이 있으면 압축본을 올린다.
+- 같은 VM에서 다시 시작해 작품 폴더가 남아 있으면 clone·setup·unpack을 건너뛰고 `status`부터 한다.
+- 2026-10-26 확인: 이 순서(새 `inkos init` 프로젝트에 `unpack --force`)로 푼 작품의 `status`가 원본과 같다(경로 줄 제외, test-6 `--resume` 압축본).
 
 ### 시험 작품 (`test-`)
 1. 개발·실행 시험에서 검증용으로 만든 작품이다. 새로 만드는 시험 작품의 ID는 `test-`로 시작한다(예: `test-6-murim`).
@@ -252,9 +270,13 @@ Drive API 주소는 `oauth2.googleapis.com`, `www.googleapis.com`이다. 네트�
 
 ## Codex 클라우드
 
-- 환경의 **Setup script**에 `tools/inkos-agent-bridge/setup/codex-cloud-setup.sh` 내용을 넣는다(설치는 setup 단계에서 인터넷으로, 작업 중에는 인터넷·모델 API 불필요).
-  Drive 보관은 Codex 환경의 Google Drive 연결 도구로 한다(원고 보관 지침). OAuth `push`를 쓸 때만 작업 중 `oauth2.googleapis.com`, `www.googleapis.com` 접속이 필요하다.
-- 저장소 루트에는 `AGENTS.md`가 없다. `install.sh`가 작품 프로젝트에 `AGENTS.md`(브리지 지침)를 복사하므로 첫 지시는 "novel/AGENTS.md를 읽고 따라라."
+- 기본 경로(사용자의 실행 방식, 2026-10-26): 저장소를 연결하지 않는다. 작업은 git 저장소가 없는 빈 `/workspace`에서 시작하고, 작업 단계에 인터넷이 열려 있다.
+  작업 안에서 `git clone -b claude/eeum-n0rsol https://github.com/tsk30304225-bot/inkos-ko && cd inkos-ko` → `sh tools/setup-cloud.sh`를 실행한다. 1차 환경 시험이 이 방식으로 통과했다.
+- 작업이 끝나면 `/workspace`가 남지 않는다. 실제 작품은 원고 보관 지침의 "작업 시작과 끝" 순서(Drive에서 압축본 받기 → `unpack` → `status`)로 시작하고, 끝낼 때 압축본을 올린다.
+- 첫 지시 예: "https://github.com/tsk30304225-bot/inkos-ko 의 `claude/eeum-n0rsol` 브랜치를 clone하고 `sh tools/setup-cloud.sh`를 실행한 뒤 `novel/AGENTS.md`를 읽고 따라라."
+  (`install.sh`가 작품 프로젝트에 `AGENTS.md`(브리지 지침)를 복사한다. 저장소 루트에는 `AGENTS.md`가 없다.)
+- Drive 보관은 Codex 환경의 Google Drive 연결 도구로 한다(원고 보관 지침). OAuth `push`를 쓸 때만 `oauth2.googleapis.com`, `www.googleapis.com` 접속이 필요하다.
+- `tools/inkos-agent-bridge/setup/codex-cloud-setup.sh`(환경의 **Setup script**)는 저장소를 연결한 Codex 환경용이다. 확인하지 않았다.
 - 서브에이전트가 없으면 집필과 검수를 별도 패스로 나눈다. 검수 요청은 집필 때의 기억이 아니라 요청 프롬프트의 원고를 다시 읽고 답한다.
 - 결과가 PR/브랜치로 남는 것은 코드 변경뿐이다. 원고는 원고 보관 지침대로 Drive 연결 도구로 남긴다.
 
