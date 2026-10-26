@@ -5,7 +5,9 @@
 #   sh tools/setup-cloud.sh [--project DIR] [--no-build] [--pull] [--replace]
 #
 # 1. checks Node 22.16+, builds the fork with pnpm 9.15.9 (the lockfile's
-#    version; another installed pnpm is not used)
+#    version) through tools/pnpm-pin, so nested `pnpm` calls in package scripts
+#    use it too; another installed pnpm is not used, and nothing is put on the
+#    global PATH or in ~/.local/bin for pnpm
 # 2. puts an `inkos` launcher on PATH (~/.local/bin)
 # 3. creates the novel project with `inkos init --lang ko` when it is missing.
 #    With --pull and INKOS_GDRIVE_* secrets it restores the newest OAuth archive
@@ -114,17 +116,22 @@ if [ -n "$foreign" ]; then
 fi
 
 # ---- build with the lockfile's pnpm
+# tools/pnpm-pin/pnpm goes first on PATH only for these commands: package scripts
+# call `pnpm` again (packages/cli prebuild -> `pnpm run prepare:workspace-core`),
+# and those nested calls must not reach another installed pnpm either.
 if [ $BUILD -eq 1 ]; then
-  if command -v pnpm >/dev/null && [ "$(pnpm --version 2>/dev/null)" = "$PNPM_VERSION" ]; then
-    PNPM="pnpm"
-  elif command -v corepack >/dev/null && corepack "pnpm@$PNPM_VERSION" --version >/dev/null 2>&1; then
-    PNPM="corepack pnpm@$PNPM_VERSION"
-  else
-    PNPM="npx -y pnpm@$PNPM_VERSION"
-  fi
-  say "pnpm: $($PNPM --version) via '$PNPM' (installed pnpm: $(pnpm --version 2>/dev/null || echo none))"
+  PIN="$REPO/tools/pnpm-pin"
+  INSTALLED=$(pnpm --version 2>/dev/null || echo none)
+  INKOS_PNPM_PIN_CMD=$(PATH="$PIN:$PATH" INKOS_PNPM_PIN_SHOW=1 pnpm)
+  export INKOS_PNPM_PIN_CMD
+  USED=$(PATH="$PIN:$PATH" pnpm --version)
+  [ "$USED" = "$PNPM_VERSION" ] || { echo "pnpm-pin chose '$INKOS_PNPM_PIN_CMD' but it reports $USED, not $PNPM_VERSION" >&2; exit 1; }
+  say "pnpm: $USED via '$INKOS_PNPM_PIN_CMD' (installed pnpm: $INSTALLED)"
   say "installing dependencies and building"
-  (cd "$REPO" && $PNPM install --frozen-lockfile && $PNPM -r build)
+  # node_modules made by another pnpm version must be reinstalled; there is no
+  # terminal to confirm that, so confirm-modules-purge is turned off here.
+  (cd "$REPO" && PATH="$PIN:$PATH" pnpm install --frozen-lockfile --config.confirm-modules-purge=false \
+    && PATH="$PIN:$PATH" pnpm -r build)
 fi
 [ -f "$REPO/packages/cli/dist/index.js" ] || { echo "build output missing: run without --no-build" >&2; exit 1; }
 

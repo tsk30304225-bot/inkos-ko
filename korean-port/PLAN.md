@@ -45,7 +45,7 @@ names, scene order, or signature combinations" 원칙을 그대로 지킨다). �
   `ko` 언어, `ko_chars` 분량 단위, 한글 작품 ID, `제1화` 가져오기, EPUB `ko`, Studio 일부 한국어,
   공통 에이전트 경로의 한국어 지침 주입이 들어 있다. **단, 실제 한국어 원고 생성은 한 번도 시험되지 않았다.**
   알려진 약점: 여러 곳이 `language !== "zh"`로 바뀌어 한국어가 영어 경로를 탄다.
-- Node 22.16 이상, pnpm 9.15.9. 빌드 `pnpm -r build`, 테스트 `pnpm -r test`.
+- Node 22.16 이상, pnpm 9.15.9. 빌드 `pnpm -r build`, 테스트 `pnpm -r test`. 다른 pnpm이 깔린 환경에서는 `PATH="$PWD/tools/pnpm-pin:$PATH"`를 앞에 둔다(7-e).
 - 라이선스 AGPL-3.0-only. 포크도 같은 라이선스와 저작권 고지를 유지한다.
 - 원본 `.gitignore`가 `CLAUDE.md`, `docs/*`, `_*.md`, `books/`, `works/`, `inkos.json`, `.inkos/`를 무시한다.
   그래서 이 포크의 작업 문서는 `korean-port/`에 둔다. 루트 `CLAUDE.md`는 무시 대상이므로 처음 한 번 `git add -f CLAUDE.md`로
@@ -416,3 +416,11 @@ names, scene order, or signature combinations" 원칙을 그대로 지킨다). �
   - 대상이 git 작업 트리 안이면 `--overwrite-work` 백업을 `~/.inkos-ko-backup/unpack/`에 둔다(밖이면 대상 옆). 출력에 둔 곳과 이유를 한 줄로 적는다.
   - 시험: 저장소 안 대상에 `--overwrite-work`를 쓰면 백업이 저장소 밖에 생기고 `git status --porcelain`이 비어 있다. RUNTIME과 브리지 AGENTS의 백업 위치를 고쳤다.
   - 시험(프록시 변수 제거): core 757 / studio 307 / cli 101 = 1,165 통과, 브리지 38/38, Drive 51/51(+4), novel-brief 27/27, 설치 스크립트 50/50.
+- 2026-10-26: **Codex 재확인 실패(f0bfe09, node 24.19, pnpm 11.25.0).** 바깥 명령은 `corepack pnpm@9.15.9`로 돌았다. 그러나 `packages/cli prebuild`의 안쪽 `pnpm`이 PATH의 pnpm 11로 돌았고, `ERR_PNPM_ABORTED_REMOVE_MODULES_DIR_NO_TTY`로 멈췄다.
+  Grok의 새 클론도 같은 이유로 pnpm 10 트리로 다시 설치됐다(TTY에서 자동 yes).
+- 2026-10-26 (`claude/eeum-n0rsol`): **7-e `(stage 7-e)` — 안쪽 pnpm 호출까지 9.15.9 고정.** 근거는 `verification/stage-7e.md`.
+  - `tools/pnpm-pin/pnpm` shim을 추가했다. 순서: 9.15.9 실제 pnpm → corepack → npx. 자기 자신은 건너뛴다.
+  - setup은 install·build에만 shim을 PATH 앞에 둔다. install에는 `--config.confirm-modules-purge=false`를 붙인다. ENV_TEST 6절과 RUNTIME 시험 명령을 shim으로 바꿨다.
+  - 원인 확인: `prepare:workspace-core`는 core 빌드만 한다. install은 pnpm 11이 스크립트 실행 전에 스스로 하는 의존성 단계다(작은 작업공간에서 확인).
+  - 이 VM의 `node_modules`도 pnpm 10.28.0이 만든 것이었다. 9.15.9로 다시 설치했다.
+  - 시험(pnpm 9.15.9 트리, 프록시 변수 제거, shim 경유): core 757 / studio 307 / cli 101 = 1,165 통과, 브리지 38/38, Drive 51/51, novel-brief 27/27, 설치 스크립트 56/56(+6). 설치된 pnpm 10.28.0은 `--version` 말고는 불리지 않았다.

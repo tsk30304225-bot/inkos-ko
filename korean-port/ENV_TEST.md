@@ -54,7 +54,8 @@ sh tools/setup-cloud.sh --project test-env      # 작품 프로젝트 폴더: <�
 - Codex 클라우드도 작업 안에서 위 명령으로 설치한다. `tools/inkos-agent-bridge/setup/codex-cloud-setup.sh`(Setup script)는 저장소를 연결한 Codex 환경용이고 확인하지 않았다.
 - 확인: `node -v`(22.16 이상. node 24는 Codex에서 확인(v24.19.0)), `inkos --version`, `ls test-env/AGENTS.md`,
   `cat test-env/.gitignore`(3줄: `*`, `runtime/`, `inkos.pre-agent.json`), `git status --short`에 `test-env`가 없어야 한다.
-- pnpm은 lockfile의 9.15.9로 고정한다. 설치된 pnpm이 다른 버전이면 `corepack pnpm@9.15.9`, 그것도 안 되면 `npx -y pnpm@9.15.9`로 실행한다.
+- pnpm은 lockfile의 9.15.9로 고정한다. setup은 `tools/pnpm-pin/pnpm`(shim)을 PATH 앞에 두고 install·build를 돌린다. 패키지 스크립트 안의 `pnpm` 호출도 shim을 탄다.
+  설치된 pnpm이 다른 버전이면 `corepack pnpm@9.15.9`, 그것도 안 되면 `npx -y pnpm@9.15.9`로 실행한다. 다른 pnpm이 만든 `node_modules`는 확인 질문 없이 다시 설치한다.
   출력의 `[setup] pnpm: 9.15.9 via '…' (installed pnpm: …)` 줄을 보고에 붙인다.
 - setup은 `~/.bashrc` 끝에 2줄을 덧붙인다: `# inkos-ko setup` 줄과 그다음 `export PATH=… INKOS_BIN=… INKOS_LOCALE=ko INKOS_AGENT_PROJECT=…` 줄.
   같은 설치로 다시 돌리면 그 2줄을 새로 바꿔 쓸 뿐 늘지 않는다. 파일 권한은 그대로 둔다. 되돌리기: 그 2줄을 지운다(`--replace`였다면 `restore.sh`가 원래 `~/.bashrc`를 되살린다).
@@ -143,14 +144,14 @@ cmp /tmp/env-joined /tmp/test-env-<환경>_*_1화.tar.* && echo "join 일치"
 ## 6. 시험 실행
 
 ```sh
-env -u HTTPS_PROXY -u https_proxy -u HTTP_PROXY -u http_proxy -u ALL_PROXY -u all_proxy pnpm -r --no-bail test 2>&1 | grep -E "Tests |FAIL"
+env -u HTTPS_PROXY -u https_proxy -u HTTP_PROXY -u http_proxy -u ALL_PROXY -u all_proxy PATH="$PWD/tools/pnpm-pin:$PATH" pnpm -r --no-bail test 2>&1 | grep -E "Tests |FAIL"
 python3 -I tools/inkos-agent-bridge/tests/test_bridge.py | tail -1
 python3 -I tools/tests/test_novel_drive.py | tail -1
 python3 -I tools/tests/test_novel_brief.py | tail -1
 python3 -I tools/tests/test_setup_scripts.py | tail -1
 ```
 
-실패 기준: 기준선은 core 757 · studio 307 · cli 101 = 1,165 통과, 브리지 38/38, Drive 51/51, novel-brief 27/27, 설치 스크립트 50/50(Claude Code, 7-d 보완).
+실패 기준: 기준선은 core 757 · studio 307 · cli 101 = 1,165 통과, 브리지 38/38, Drive 51/51, novel-brief 27/27, 설치 스크립트 56/56(Claude Code, 7-e).
 통과 수가 이보다 적거나 실패가 하나라도 있으면 실패다. 실패한 시험 이름과 출력 원문을 보고하고, 고치지 않는다.
 
 ## 7. 보고 양식

@@ -12,7 +12,11 @@ sh tools/setup-cloud.sh            # 기본 작품 프로젝트: <저장소>/nov
 스크립트가 하는 일:
 
 1. Node 22.16 이상·python3 확인(node 24는 Codex에서 확인(v24.19.0)), lockfile의 pnpm 9.15.9로 `install --frozen-lockfile && -r build`.
-   설치된 pnpm이 9.15.9가 아니면 `corepack pnpm@9.15.9`, 안 되면 `npx -y pnpm@9.15.9`로 실행하고 쓴 버전을 출력한다(`package.json`은 고치지 않는다).
+   `tools/pnpm-pin/pnpm`(shim)을 이 두 명령에만 PATH 앞에 둔다. shim은 PATH에서 자기 자신을 뺀 실제 `pnpm`이 9.15.9면 그것을,
+   아니면 `corepack pnpm@9.15.9`, 안 되면 `npx -y pnpm@9.15.9`를 쓴다. 쓴 경로를 출력한다(`package.json`은 고치지 않는다).
+   패키지 스크립트 안의 `pnpm` 호출(`packages/cli`의 `prebuild`/`pretypecheck` → `pnpm run prepare:workspace-core` → `pnpm --filter @actalk/inkos-core build`,
+   `pretest` → `pnpm run build`)도 PATH에서 shim을 다시 찾으므로 9.15.9로 돈다. 다른 pnpm이 만든 `node_modules`는 확인 질문 없이 다시 설치한다(`--config.confirm-modules-purge=false`).
+   shim은 `~/.local/bin`이나 `~/.bashrc`에 넣지 않는다.
 2. `~/.local/bin/inkos` 실행기 생성(빌드 결과 `packages/cli/dist/index.js`에는 실행 권한이 없어서 래퍼를 둔다)
 3. 작품 프로젝트가 없으면 `inkos init --lang ko`(OAuth 비밀값을 넣고 `--pull`을 주면 최신 보관본을 복원 — 위 원고 보관 지침의 사용자 확인을 먼저 받을 것)
 4. 브리지 설치(`install.sh --project`), `~/.bashrc`에 `PATH`·`INKOS_BIN`·`INKOS_LOCALE=ko`·`INKOS_AGENT_PROJECT` 추가, `inkos-agent doctor`
@@ -24,6 +28,12 @@ sh tools/setup-cloud.sh            # 기본 작품 프로젝트: <저장소>/nov
 파일은 링크를 따라 쓰지 않는다(임시 파일에 쓰고 이름 바꾸기, 권한 유지). `~/.bashrc`에 덧붙이는 것은 2줄(`# inkos-ko setup`과 `export …`)이고, 지우면 되돌아간다.
 `~/.bashrc`가 링크(dotfiles 관리 도구 등)이면 고치지 않고 그 2줄을 출력하며, 백업·되돌리기 대상에서도 빠진다.
 브리지(`/health`)는 자기 runtime 폴더(`state`)를 알려 준다. 포트의 브리지가 이 설치의 것이 아니면 `doctor`는 경고, `start`·`job start`는 exit 3.
+
+시험 명령(저장소 루트에서, shim을 PATH 앞에 두고):
+
+```sh
+env -u HTTPS_PROXY -u https_proxy -u HTTP_PROXY -u http_proxy -u ALL_PROXY -u all_proxy PATH="$PWD/tools/pnpm-pin:$PATH" pnpm -r --no-bail test
+```
 
 API 키나 외부 모델 주소는 설정하지 않는다. `doctor`가 `modelOverrides … bypasses the bridge`를 보고하면 실제 API로 나가는 설정이 있다는 뜻이므로 사용자에게 먼저 묻는다.
 

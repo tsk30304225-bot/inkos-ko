@@ -3,8 +3,9 @@
 
 Each case runs with a temporary HOME against a temporary copy of the scripts
 (tools/ only) with a fake build output, so the test needs no build and no
-network. The pnpm cases put fake pnpm/corepack/npx scripts first on PATH and
-only record how they were called. The link cases check that a link at a target path is replaced
+network. The pnpm cases put a fake installed pnpm 11 (fails on anything but
+--version) and fake corepack/npx first on PATH; the fake pnpm 9.15.9 behind
+corepack/npx runs nested `pnpm` calls the way the repository's package scripts do. The link cases check that a link at a target path is replaced
 itself and that the bytes of the file it pointed to stay the same.
 """
 import os
@@ -24,6 +25,9 @@ REPO = root / "repo"
 shutil.copy2(SOURCE / "tools" / "setup-cloud.sh", REPO / "tools" / "setup-cloud.sh")
 shutil.copytree(SOURCE / "tools" / "inkos-agent-bridge", REPO / "tools" / "inkos-agent-bridge", symlinks=True,
                 ignore=shutil.ignore_patterns("runtime", "__pycache__", "tests"))
+if (SOURCE / "tools" / "pnpm-pin").is_dir():
+    shutil.copytree(SOURCE / "tools" / "pnpm-pin", REPO / "tools" / "pnpm-pin")
+(REPO / "packages" / "cli").mkdir(parents=True)
 (REPO / "packages" / "cli" / "dist").mkdir(parents=True)
 (REPO / "packages" / "cli" / "dist" / "index.js").write_text("console.log('2.0.0 (fake build for setup tests)');\n")
 SETUP = REPO / "tools" / "setup-cloud.sh"
@@ -237,36 +241,83 @@ b = next((bin_ / ".inkos-ko-backup").iterdir())
 subprocess.run(["sh", str(b / "restore.sh")], env=env, check=True)
 check("install.sh restore.sh brings the old inkos-agent link back", os.readlink(bin_ / "inkos-agent") == str(other_agent))
 
-# ---------- 8. pnpm pinned to 9.15.9 ----------
-def pnpm_case(name, installed, corepack_ok):
+# ---------- 8. pnpm pinned to 9.15.9, nested calls included ----------
+def pinned_pnpm(who, log):
+    """A fake pnpm 9.15.9 that makes the nested calls the real package scripts make."""
+    return (f'echo "{who} $*" >> "{log}"\n'
+            'case "$*" in\n'
+            '  *--version*) echo 9.15.9 ;;\n'
+            # pnpm -r build: packages/cli prebuild runs `pnpm run prepare:workspace-core` (pnpm found on PATH)
+            f'  *"-r build"*) (cd "{REPO}/packages/cli" && pnpm run prepare:workspace-core) || exit 1 ;;\n'
+            '  *"run prepare:workspace-core"*) pnpm --filter @actalk/inkos-core build || exit 1 ;;\n'
+            # pnpm -r test: packages/cli pretest runs `pnpm run build`
+            f'  *"-r --no-bail test"*) (cd "{REPO}/packages/cli" && pnpm run build) || exit 1 ;;\n'
+            '  *"run build"*) pnpm run prepare:workspace-core || exit 1 ;;\n'
+            'esac\nexit 0\n')
+
+
+def pnpm_case(name, installed_ok, corepack_ok):
     base, home, project, fake, env = case(name)
     log = base / "calls.log"
-    fake_cmd(fake, "pnpm", f'echo "pnpm $*" >> "{log}"\n[ "$1" = --version ] && echo {installed}\nexit 0\n')
-    fake_cmd(fake, "corepack", f'echo "corepack $*" >> "{log}"\n' + (
-        'case "$*" in *--version*) echo 9.15.9 ;; esac\nexit 0\n' if corepack_ok else "exit 1\n"))
-    fake_cmd(fake, "npx", f'echo "npx $*" >> "{log}"\ncase "$*" in *--version*) echo 9.15.9 ;; esac\nexit 0\n')
+    if installed_ok:
+        fake_cmd(fake, "pnpm", pinned_pnpm("pnpm9", log))
+    else:  # the installed pnpm 11: any real use fails, like ERR_PNPM_ABORTED_REMOVE_MODULES_DIR_NO_TTY
+        fake_cmd(fake, "pnpm", f'echo "pnpm11 $*" >> "{log}"\n[ "$1" = --version ] && {{ echo 11.25.0; exit 0; }}\n'
+                               'echo "fake pnpm 11 must not run: $*" >&2\nexit 1\n')
+    fake_cmd(fake, "corepack", pinned_pnpm("corepack", log) if corepack_ok else f'echo "corepack $*" >> "{log}"\nexit 1\n')
+    fake_cmd(fake, "npx", pinned_pnpm("npx", log))
     r = run(SETUP, env, "--project", str(project))
+    test = subprocess.run(["sh", "-c", f'cd "{REPO}" && PATH="$PWD/tools/pnpm-pin:$PATH" pnpm -r --no-bail test'],
+                          env=env, capture_output=True, text=True)
     calls = log.read_text().splitlines() if log.exists() else []
-    return r, calls
+    return r, test, calls
 
 
-r, calls = pnpm_case("pnpm-corepack", "11.0.0", True)
-check("pnpm 11.x installed: corepack pnpm@9.15.9 is used",
-      r.returncode == 0 and "pnpm: 9.15.9 via 'corepack pnpm@9.15.9' (installed pnpm: 11.0.0)" in r.stdout, r.stdout + r.stderr)
-check("install and build ran through corepack, not the installed pnpm",
-      "corepack pnpm@9.15.9 install --frozen-lockfile" in calls and "corepack pnpm@9.15.9 -r build" in calls
-      and not [c for c in calls if c.startswith("pnpm ") and c != "pnpm --version"], calls)
+def pnpm11_work(calls):
+    return [c for c in calls if c.startswith("pnpm11 ") and c != "pnpm11 --version"]
 
-r, calls = pnpm_case("pnpm-npx", "11.0.0", False)
-check("no working corepack: npx -y pnpm@9.15.9 is used",
-      r.returncode == 0 and "pnpm: 9.15.9 via 'npx -y pnpm@9.15.9' (installed pnpm: 11.0.0)" in r.stdout
-      and "npx -y pnpm@9.15.9 install --frozen-lockfile" in calls and "npx -y pnpm@9.15.9 -r build" in calls,
-      r.stdout + r.stderr + str(calls))
 
-r, calls = pnpm_case("pnpm-ok", "9.15.9", True)
-check("pnpm 9.15.9 installed: used directly",
-      r.returncode == 0 and "pnpm: 9.15.9 via 'pnpm'" in r.stdout and "pnpm install --frozen-lockfile" in calls
+r, test, calls = pnpm_case("pnpm-corepack", False, True)
+check("pnpm 11 installed: corepack pnpm@9.15.9 is used",
+      r.returncode == 0 and "pnpm: 9.15.9 via 'corepack pnpm@9.15.9' (installed pnpm: 11.25.0)" in r.stdout, r.stdout + r.stderr)
+check("install (no purge prompt) and build ran through corepack",
+      "corepack pnpm@9.15.9 install --frozen-lockfile --config.confirm-modules-purge=false" in calls
+      and "corepack pnpm@9.15.9 -r build" in calls, calls)
+check("nested calls from package scripts also went through corepack",
+      "corepack pnpm@9.15.9 run prepare:workspace-core" in calls
+      and "corepack pnpm@9.15.9 --filter @actalk/inkos-core build" in calls, calls)
+check("the documented test command pins nested calls too",
+      test.returncode == 0 and "corepack pnpm@9.15.9 -r --no-bail test" in calls and "corepack pnpm@9.15.9 run build" in calls,
+      test.stdout + test.stderr + str(calls))
+check("fake pnpm 11 was never run for work (only --version)", not pnpm11_work(calls), pnpm11_work(calls))
+local_bin = root / "pnpm-corepack" / "home" / ".local" / "bin"
+check("no pnpm placed in ~/.local/bin or ~/.bashrc", sorted(p.name for p in local_bin.iterdir()) == ["inkos", "inkos-agent"]
+      and "pnpm-pin" not in (root / "pnpm-corepack" / "home" / ".bashrc").read_text(), sorted(p.name for p in local_bin.iterdir()))
+
+r, test, calls = pnpm_case("pnpm-npx", False, False)
+check("no working corepack: npx -y pnpm@9.15.9 is used, nested calls included",
+      r.returncode == 0 and "pnpm: 9.15.9 via 'npx -y pnpm@9.15.9' (installed pnpm: 11.25.0)" in r.stdout
+      and "npx -y pnpm@9.15.9 -r build" in calls and "npx -y pnpm@9.15.9 --filter @actalk/inkos-core build" in calls
+      and not pnpm11_work(calls), r.stdout + r.stderr + str(calls))
+
+r, test, calls = pnpm_case("pnpm-ok", True, True)
+real = root / "pnpm-ok" / "fakebin" / "pnpm"
+check("pnpm 9.15.9 installed: used directly, nested calls included",
+      r.returncode == 0 and f"pnpm: 9.15.9 via '{real}'" in r.stdout and "pnpm9 -r build" in calls
+      and "pnpm9 --filter @actalk/inkos-core build" in calls
       and not [c for c in calls if c.startswith(("corepack", "npx"))], r.stdout + str(calls))
+
+# The shim never picks itself, even when a copy of it sits on PATH (no recursion).
+base, home, project, fake, env = case("pnpm-self")
+shutil.copy2(REPO / "tools" / "pnpm-pin" / "pnpm", fake / "pnpm")
+log = base / "calls.log"
+fake_cmd(fake, "corepack", pinned_pnpm("corepack", log))
+r = subprocess.run(["sh", "-c", f'PATH="{REPO}/tools/pnpm-pin:$PATH" pnpm -r build'], env=env, capture_output=True, text=True, timeout=60)
+check("a copy of the shim on PATH is skipped, not recursed into", r.returncode == 0 and "corepack pnpm@9.15.9 -r build" in log.read_text(),
+      r.stdout + r.stderr)
+r = subprocess.run(["sh", str(REPO / "tools" / "pnpm-pin" / "pnpm"), "--version"], env={**env, "INKOS_PNPM_PIN_DEPTH": "21"},
+                   capture_output=True, text=True)
+check("a runaway nesting stops (exit 70)", r.returncode == 70 and "refusing" in r.stderr, r.stderr)
 
 shutil.rmtree(root, ignore_errors=True)
 print(f"\n{sum(results)}/{len(results)} passed")

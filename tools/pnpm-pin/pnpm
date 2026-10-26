@@ -1,0 +1,58 @@
+#!/bin/sh
+# inkos-ko pnpm-pin shim: always run the lockfile's pnpm 9.15.9.
+#
+# Put this directory first on PATH for one command, e.g.
+#   PATH="$PWD/tools/pnpm-pin:$PATH" pnpm -r --no-bail test
+# Nested calls from package scripts (packages/cli prebuild runs
+# `pnpm run prepare:workspace-core`, pretest runs `pnpm run build`) find `pnpm`
+# on PATH again and come back here instead of reaching another installed pnpm.
+#
+# Order: a real pnpm on PATH (not this shim) that reports 9.15.9, else
+# `corepack pnpm@9.15.9`, else `npx -y pnpm@9.15.9`. The choice is kept in
+# INKOS_PNPM_PIN_CMD for nested calls. INKOS_PNPM_PIN_SHOW=1 prints the choice
+# and exits. Never install this shim into ~/.local/bin or another global PATH dir.
+set -eu
+V=9.15.9
+MARK="inkos-ko pnpm-pin shim"
+
+depth=${INKOS_PNPM_PIN_DEPTH:-0}
+if [ "$depth" -gt 20 ]; then
+  echo "pnpm-pin: nested more than 20 levels; refusing (a loop?)" >&2
+  exit 70
+fi
+export INKOS_PNPM_PIN_DEPTH=$((depth + 1))
+
+if [ -z "${INKOS_PNPM_PIN_CMD:-}" ]; then
+  real=""
+  old_ifs=$IFS
+  IFS=:
+  for dir in $PATH; do
+    candidate="${dir:-.}/pnpm"
+    [ -f "$candidate" ] && [ -x "$candidate" ] || continue
+    grep -q "$MARK" "$candidate" 2>/dev/null && continue  # this shim (or a copy of it)
+    real=$candidate
+    break
+  done
+  IFS=$old_ifs
+  if [ -n "$real" ] && [ "$("$real" --version 2>/dev/null || true)" = "$V" ]; then
+    INKOS_PNPM_PIN_CMD=$real
+  elif command -v corepack >/dev/null 2>&1 \
+      && [ "$(COREPACK_ENABLE_DOWNLOAD_PROMPT=0 corepack "pnpm@$V" --version 2>/dev/null || true)" = "$V" ]; then
+    INKOS_PNPM_PIN_CMD="corepack pnpm@$V"
+  else
+    INKOS_PNPM_PIN_CMD="npx -y pnpm@$V"
+  fi
+  export INKOS_PNPM_PIN_CMD
+fi
+export COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+
+if [ "${INKOS_PNPM_PIN_SHOW:-}" = 1 ]; then
+  printf '%s\n' "$INKOS_PNPM_PIN_CMD"
+  exit 0
+fi
+case $INKOS_PNPM_PIN_CMD in
+  /*) exec "$INKOS_PNPM_PIN_CMD" "$@" ;;  # a real pnpm 9.15.9 found on PATH
+  # "corepack pnpm@V" or "npx -y pnpm@V": split on spaces on purpose.
+  # shellcheck disable=SC2086
+  *) exec $INKOS_PNPM_PIN_CMD "$@" ;;
+esac
