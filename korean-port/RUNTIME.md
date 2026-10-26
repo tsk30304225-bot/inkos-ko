@@ -117,7 +117,8 @@ tools/inkos-agent-bridge/inkos-agent run -- status <작품ID>   # 마지막 회�
 ```
 
 - `novel/`에 원고가 있으면(작품 폴더 `works/<ID>/`, 회차 원고 `source/chapters/*.md`, 1.8 구조 `books/*/chapters/*.md`) 도구가 `--force`를 거부하고 exit 3으로 끝난다(아무것도 바꾸지 않음).
-  이때는 멈추고 사용자에게 묻는다. 사용자가 덮으라고 하면 `--overwrite-work`를 쓴다. 이 옵션은 먼저 대상 폴더 전체를 옆에 `<폴더>.before-unpack-<UTC>.tar.xz`로 압축해 두고 그 경로를 출력한 뒤 덮는다.
+  이때는 멈추고 사용자에게 묻는다. 사용자가 덮으라고 하면 `--overwrite-work`를 쓴다. 이 옵션은 먼저 대상 폴더 전체를 `<폴더 이름>.before-unpack-<UTC>.tar.xz`로 압축해 두고, 그 경로와 둔 곳의 이유를 출력한 뒤 덮는다.
+  백업 위치: 대상이 git 작업 트리 안이면(기본 배치 `<저장소>/novel`) `~/.inkos-ko-backup/unpack/`(저장소 밖이라 커밋될 수 없다), git 밖이면 대상 폴더 옆.
   백업에는 원고가 들어 있으니 커밋하거나 올리지 않는다. 압축본에 없는 파일은 지우지 않는다.
 - 압축본 뒤 회차의 원고 `.md`가 Drive에 있으면 위 "받기"대로 사용자에게 묻는다. 그다음 이어 쓴다(올리는 때는 위와 같다).
 - 작업을 끝낼 때: 마지막으로 올린 압축본 뒤에 바뀐 것이 있으면 압축본을 올린다.
@@ -149,7 +150,7 @@ tools/inkos-agent-bridge/inkos-agent run -- status <작품ID>   # 마지막 회�
 "Inkos ko" 폴더 ID: `1FYkA9t5AiI3u31cL0uM8dSFjgf5LxnEU`. 각 실행 환경(Claude Code·Codex 클라우드, Grok봇)에는 각자 Google Drive 연결이 있다(2026-10-25 사용자 결정).
 `pack`(옵션 없음)은 작품 프로젝트 전체(설정·원고·상태·스냅샷·작업 기록)를 묶는 전체 압축본이다. 보관 지침은 `--resume`을 쓴다. 어느 쪽이든 `.env`·브리지 `runtime/`·`.inkos-drive-base`는 넣지 않는다.
 받은 압축본은 `python3 tools/novel-drive.py unpack <압축본> <작품 폴더>`로 푼다. 기존 프로젝트가 있으면 `--force`가 필요하고, `--force`는 방금 `init`만 한 빈 프로젝트에서만 통한다.
-원고가 있으면 exit 3으로 멈춘다. 사용자에게 묻고, 덮기로 하면 `--overwrite-work`(옆에 자동 백업)를 쓴다. OAuth `pull`도 같다.
+원고가 있으면 exit 3으로 멈춘다. 사용자에게 묻고, 덮기로 하면 `--overwrite-work`(자동 백업: git 작업 트리 안이면 `~/.inkos-ko-backup/unpack/`, 밖이면 대상 옆)를 쓴다. OAuth `pull`도 같다.
 
 ### 압축본 구성과 재개용 묶음(`pack --resume`)
 

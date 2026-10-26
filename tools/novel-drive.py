@@ -28,7 +28,9 @@ Overwrite protection: `pull` records the restored archive in <project>/.inkos-dr
 Unpack protection: an existing project needs --force, and --force only overwrites a
 freshly initialised project (no work in works/ or books/). When dest already holds a
 work or chapter manuscripts, unpack stops with exit 3; --overwrite-work first packs
-the whole of dest to <dest>.before-unpack-<UTC>.tar.xz beside it, then overwrites.
+the whole of dest to <dest>.before-unpack-<UTC>.tar.xz, then overwrites. The backup goes
+beside dest, or to ~/.inkos-ko-backup/unpack/ when dest is inside a git work tree (the
+backup holds the manuscripts and must not end up in a repository).
 
 Use the narrow `drive.file` OAuth scope: the tool can then see only files it
 created, so create the folder with init-folder rather than in the Drive UI.
@@ -41,6 +43,7 @@ import io
 import json
 import os
 import re
+import subprocess
 import sys
 import tarfile
 import time
@@ -197,14 +200,36 @@ def existing_work(dest: Path) -> list[str]:
     return found
 
 
-def backup_before_unpack(dest: Path) -> Path:
+def git_work_tree(path: Path) -> str | None:
+    """The top of the git work tree that contains path, or None (also when git is missing)."""
+    try:
+        proc = subprocess.run(["git", "-C", str(path), "rev-parse", "--show-toplevel"],
+                              capture_output=True, text=True, timeout=20)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if proc.returncode != 0:
+        return None
+    return proc.stdout.strip() or None
+
+
+def backup_before_unpack(dest: Path) -> tuple[Path, str]:
+    """Pack all of dest before it is overwritten; returns the backup path and where/why."""
     fmt = "xz" if xz_available() else "gz"
     stamp = time.strftime("%Y%m%d-%H%M%S", time.gmtime())
-    backup = dest.parent / f"{dest.name}.before-unpack-{stamp}.tar.{fmt}"
+    name = f"{dest.resolve().name}.before-unpack-{stamp}.tar.{fmt}"
+    repo = git_work_tree(dest)
+    if repo:
+        folder = Path.home() / ".inkos-ko-backup" / "unpack"
+        where = f"outside the git work tree {repo}, so it cannot be committed"
+    else:
+        folder = dest.resolve().parent
+        where = "beside it (not in a git work tree)"
+    folder.mkdir(parents=True, exist_ok=True)
+    backup = folder / name
     data = pack_bytes(dest, fmt=fmt)
     with open(backup, "xb") as out:  # never replace an earlier backup
         out.write(data)
-    return backup
+    return backup, where
 
 
 def unpack_bytes(data: bytes, dest: Path, force: bool, overwrite_work: bool = False) -> int:
@@ -222,13 +247,15 @@ def unpack_bytes(data: bytes, dest: Path, force: bool, overwrite_work: bool = Fa
             shown = ", ".join(work[:5]) + (f" and {len(work) - 5} more" if len(work) > 5 else "")
             die(f"{dest} already holds work ({shown}); nothing was changed. --force only overwrites a freshly "
                 "initialised project. Stop and ask the user: --overwrite-work first packs the whole of "
-                f"{dest} to {dest.name}.before-unpack-<UTC>.tar.xz beside it, then overwrites", 3)
+                f"{dest} to {dest.resolve().name}.before-unpack-<UTC>.tar.xz (beside it, or in "
+                "~/.inkos-ko-backup/unpack/ when it is inside a git work tree), then overwrites", 3)
         if not (force or overwrite_work):
             die(f"{dest} already contains a project; pass --force to overwrite files from the archive")
         if overwrite_work:
-            backup = backup_before_unpack(dest)
+            backup, where = backup_before_unpack(dest)
             print(f"backed up {dest} ({len(work)} work files) to {backup} before overwriting; "
                   "it holds the manuscripts, so do not commit or upload it")
+            print(f"backup location: {where}")
     dest.mkdir(parents=True, exist_ok=True)
     count = 0
     with tarfile.open(fileobj=io.BytesIO(data), mode="r:*") as tar:
@@ -386,7 +413,7 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--gz", action="store_true", help="write gzip (.tar.gz) instead of the default xz")
     p = sub.add_parser("unpack"); p.add_argument("archive"); p.add_argument("dest")
     p.add_argument("--force", action="store_true", help="overwrite a freshly initialised project (no works yet)")
-    p.add_argument("--overwrite-work", action="store_true", help="overwrite a project that holds work, after backing it up beside it")
+    p.add_argument("--overwrite-work", action="store_true", help="overwrite a project that holds work, after backing it up")
     p = sub.add_parser("split"); p.add_argument("archive"); p.add_argument("out_dir", nargs="?")
     p.add_argument("--part-size", type=int, default=PART_SIZE)
     p = sub.add_parser("join"); p.add_argument("manifest"); p.add_argument("-o", "--output")
@@ -394,7 +421,7 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--force", action="store_true", help="push even if Drive's newest archive is not this copy's base")
     p = sub.add_parser("pull"); p.add_argument("dest"); p.add_argument("--name"); p.add_argument("--key", help="work key (archive name part)")
     p.add_argument("--force", action="store_true", help="overwrite a freshly initialised project (no works yet)")
-    p.add_argument("--overwrite-work", action="store_true", help="overwrite a project that holds work, after backing it up beside it")
+    p.add_argument("--overwrite-work", action="store_true", help="overwrite a project that holds work, after backing it up")
     sub.add_parser("list")
     p = sub.add_parser("init-folder"); p.add_argument("--name", default="inkos-novels")
     args = parser.parse_args(argv)

@@ -412,3 +412,7 @@ names, scene order, or signature combinations" 원칙을 그대로 지킨다). �
   - `--overwrite-work`: 대상 폴더 전체를 옆에 `<dest>.before-unpack-<UTC>.tar.xz`로 백업하고, 그 경로를 출력한 뒤 덮는다.
   - RUNTIME "작업 시작과 끝"·보관 절, 브리지 AGENTS: "원고가 있으면 도구가 거부, 멈추고 사용자에게 묻는다"를 적었다.
   - 시험(프록시 변수 제거): core 757 / studio 307 / cli 101 = 1,165 통과, 브리지 38/38, Drive 47/47(+9), novel-brief 27/27, 설치 스크립트 50/50. 옛 코드는 새 시험 5개가 실패한다.
+- 2026-10-26 (`claude/eeum-n0rsol`): **7-d 보완 `(stage 7-d)` — 백업 위치.** 감독 승인: 7-d, 결정필요 답 (b). 근거는 `verification/stage-7d.md` "보완".
+  - 대상이 git 작업 트리 안이면 `--overwrite-work` 백업을 `~/.inkos-ko-backup/unpack/`에 둔다(밖이면 대상 옆). 출력에 둔 곳과 이유를 한 줄로 적는다.
+  - 시험: 저장소 안 대상에 `--overwrite-work`를 쓰면 백업이 저장소 밖에 생기고 `git status --porcelain`이 비어 있다. RUNTIME과 브리지 AGENTS의 백업 위치를 고쳤다.
+  - 시험(프록시 변수 제거): core 757 / studio 307 / cli 101 = 1,165 통과, 브리지 38/38, Drive 51/51(+4), novel-brief 27/27, 설치 스크립트 50/50.

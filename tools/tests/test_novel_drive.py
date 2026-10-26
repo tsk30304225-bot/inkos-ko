@@ -166,6 +166,28 @@ if backups:
           saved.get("works/달빛/source/chapters/0001_시작.md") == before["works/달빛/source/chapters/0001_시작.md"]
           and saved.get("works/달빛/source/chapters/0002_새_회차.md") == before["works/달빛/source/chapters/0002_새_회차.md"], sorted(saved))
 check("--overwrite-work then overwrites from the archive", held_chapter.read_text(encoding="utf-8").endswith("본문"))
+check("outside git the backup location line says so", "backup location: beside it (not in a git work tree)" in r.stdout, r.stdout)
+
+# Inside a git work tree (the default <repository>/novel layout) the backup goes to ~/.inkos-ko-backup/unpack/.
+import shutil as _shutil
+repo = tmp / "code-repo"
+repo.mkdir()
+subprocess.run(["git", "init", "-q", str(repo)], check=True)
+in_repo = repo / "novel"
+_shutil.copytree(tmp / "restored", in_repo)
+(in_repo / ".gitignore").write_text("*\nruntime/\ninkos.pre-agent.json\n", encoding="utf-8")
+fake_home = tmp / "home"
+fake_home.mkdir()
+status_before = subprocess.run(["git", "-C", str(repo), "status", "--porcelain"], capture_output=True, text=True).stdout
+r = run("unpack", str(out), str(in_repo), "--overwrite-work", extra={"HOME": str(fake_home)})
+home_backups = sorted((fake_home / ".inkos-ko-backup" / "unpack").glob("novel.before-unpack-*.tar.*"))
+check("in a git work tree the backup goes to ~/.inkos-ko-backup/unpack/", r.returncode == 0 and len(home_backups) == 1
+      and str(home_backups[0]) in r.stdout and f"outside the git work tree {repo.resolve()}" in r.stdout, r.stdout + r.stderr)
+check("nothing new inside the repository", not list(repo.glob("*.before-unpack-*"))
+      and status_before == "" and subprocess.run(["git", "-C", str(repo), "status", "--porcelain"], capture_output=True, text=True).stdout == "")
+if home_backups:
+    with tarfile.open(home_backups[0]) as tar:
+        check("that backup holds the manuscripts", "works/달빛/source/chapters/0002_새_회차.md" in tar.getnames())
 
 # xz is the default format; gz archives made before the switch still unpack.
 r = run("pack", str(project), "-o", str(tmp / "plain"))
@@ -283,7 +305,6 @@ check("session A push", r.returncode == 0, r.stdout + r.stderr)
 _time.sleep(1.1)
 r = run("push", str(copy_b), "--keep", "5", extra=secrets)    # session B is now behind
 check("push refused when Drive moved past this copy's base", r.returncode == 3 and "another session pushed" in r.stderr, r.stdout + r.stderr)
-import shutil as _shutil
 r = run("push", str(tmp / "pulled"), "--keep", "5", extra=secrets)   # pulled earlier, now stale too
 check("stale pulled copy refused", r.returncode == 3, r.stdout + r.stderr)
 _time.sleep(1.1)

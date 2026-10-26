@@ -54,6 +54,28 @@ unpacked 46 files into <tmp>/novel                                   rc=0
 기본 배치(`<저장소>/novel`)에서는 백업이 저장소 루트(`<저장소>/novel.before-unpack-….tar.xz`)에 생긴다. 원본 `.gitignore`에 걸리지 않아 `git status`에 untracked로 보인다(`git check-ignore`로 확인).
 보고의 결정필요에 올렸다.
 
+## 보완: 백업 위치 (감독 [승인] 7-d의 결정필요 답 (b))
+
+- 대상이 git 작업 트리 안이면(`git -C <dest> rev-parse --show-toplevel` 성공) 백업은 `~/.inkos-ko-backup/unpack/<dest 이름>.before-unpack-<UTC>.tar.xz`에 둔다.
+  git 밖이거나 git이 없으면 전처럼 대상 폴더 옆에 둔다.
+- 출력에 한 줄을 더 적는다: `backup location: outside the git work tree <top>, so it cannot be committed` 또는 `backup location: beside it (not in a git work tree)`.
+- exit 3 메시지도 두 위치를 함께 적는다.
+- 시험 47 → 51:
+  - git 밖이면 위치 줄이 나온다.
+  - `git init`한 저장소 안의 `novel/`(`.gitignore`는 `*` 등 3줄)에 `--overwrite-work`를 쓰면, 백업이 가짜 HOME의 `~/.inkos-ko-backup/unpack/`에 하나 생긴다.
+    출력에 저장소 경로가 나오고, 저장소 안에는 백업이 없으며 `git status --porcelain`은 전후 모두 비어 있다. 백업에는 2화 원고가 들어 있다.
+- 이 저장소 안에서 한 데모(작품 폴더 `novel-7d-demo/`, `.gitignore` `*`, 데모 뒤 삭제):
+```
+$ unpack … novel-7d-demo --overwrite-work
+backed up novel-7d-demo (4 work files) to <tmp>/home/.inkos-ko-backup/unpack/novel-7d-demo.before-unpack-20261026-015922.tar.xz before overwriting; it holds the manuscripts, so do not commit or upload it
+backup location: outside the git work tree /home/user/inkos-ko, so it cannot be committed
+unpacked 46 files into novel-7d-demo                          rc=0
+$ git status --porcelain
+ M tools/novel-drive.py
+ M tools/tests/test_novel_drive.py          (작업 중인 코드 변경만. 작품 폴더와 백업은 보이지 않음)
+```
+- 문서: RUNTIME "작업 시작과 끝"·보관 절, 브리지 AGENTS.md의 백업 위치.
+
 ## 시험 수
 
 프록시 변수 제거: core 757 / studio 307 / cli 101 = 1,165 통과. 브리지 38/38, Drive 47/47(+9), novel-brief 27/27, 설치 스크립트 50/50.

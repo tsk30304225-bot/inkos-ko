@@ -136,7 +136,8 @@ The main session coordinates; subagents answer requests.
   clone → setup → newest archive from Drive 'Inkos ko' → `novel-drive.py unpack
   <archive> novel --force` (the fresh empty project only; with work in it the tool
   refuses with exit 3: stop and ask the user, and only on their word use
-  `--overwrite-work`, which first backs the folder up beside it) → `status`, and ends by
+  `--overwrite-work`, which first backs the folder up: to ~/.inkos-ko-backup/unpack/
+  when it is inside a git work tree, otherwise beside it) → `status`, and ends by
   uploading an archive (Grok and Claude Code cloud do the same after a VM is
   reclaimed; see RUNTIME "작업 시작과 끝"). `setup/codex-cloud-setup.sh` is for a
   Codex environment with the repository attached and has not been checked.

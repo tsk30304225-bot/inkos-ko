@@ -150,7 +150,7 @@ python3 -I tools/tests/test_novel_brief.py | tail -1
 python3 -I tools/tests/test_setup_scripts.py | tail -1
 ```
 
-실패 기준: 기준선은 core 757 · studio 307 · cli 101 = 1,165 통과, 브리지 38/38, Drive 47/47, novel-brief 27/27, 설치 스크립트 50/50(Claude Code, 7-d).
+실패 기준: 기준선은 core 757 · studio 307 · cli 101 = 1,165 통과, 브리지 38/38, Drive 51/51, novel-brief 27/27, 설치 스크립트 50/50(Claude Code, 7-d 보완).
 통과 수가 이보다 적거나 실패가 하나라도 있으면 실패다. 실패한 시험 이름과 출력 원문을 보고하고, 고치지 않는다.
 
 ## 7. 보고 양식
