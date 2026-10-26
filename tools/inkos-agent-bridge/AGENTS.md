@@ -129,6 +129,12 @@ The main session coordinates; subagents answer requests.
   Install one Node version with one tool. Two overlapping installs broke npm's own
   files once (`Class extends value undefined` during a build). Check `node -v` and
   `npm -v` before building.
+- One installation per machine at a time. `install.sh` and `tools/setup-cloud.sh`
+  stop with exit 3 when `~/.local/bin/inkos-agent` (or `inkos`, `~/.bashrc`'s
+  inkos-ko block) belongs to another installation; `--replace` backs them up to
+  `~/.local/bin/.inkos-ko-backup/<time>/` with a `restore.sh`. A bridge on the port
+  whose `/health` `state` is not this runtime folder is another installation's:
+  `doctor` warns, `start` and `job start` exit 3. Report it; do not stop it yourself.
 - Role card folders: zh/en works use `roles/主要角色`·`roles/次要角色`; Korean (ko)
   works in the Korean fork use `roles/major`·`roles/minor`. The engine reads all four.
   Do not move cards by hand.

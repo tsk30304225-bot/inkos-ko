@@ -24,6 +24,26 @@ git clone -b claude/eeum-n0rsol https://github.com/tsk30304225-bot/inkos-ko && c
 date -u; uname -a; git rev-parse --abbrev-ref HEAD; git log --oneline -1
 ```
 
+## 기존 설치 확인 (1절 전에)
+
+같은 컴퓨터에 이미 다른 설치(다른 클론의 `inkos`·`inkos-agent`, 떠 있는 브리지)가 있는지 먼저 본다.
+
+```sh
+ls -l ~/.local/bin/inkos* 2>&1
+grep -n "inkos-ko setup" -A1 ~/.bashrc 2>&1
+(ss -ltnp 2>/dev/null || netstat -ltnp 2>/dev/null) | grep 4568 || echo "4568 포트 비어 있음"
+curl -s --max-time 3 http://127.0.0.1:4568/health || echo "브리지 없음"
+```
+
+- `~/.local/bin/inkos*`가 있고 4568 포트도 쓰이고 있으면(둘 다) 멈추고 그 출력 원문을 보고한다. 사용자가 정할 일이다.
+- 하나만 있으면 출력을 보고에 붙이고 1절로 간다. 다른 설치가 있으면 1절의 `setup-cloud.sh`가 무엇이 어디를 가리키는지 출력하고 **exit 3**으로 멈춘다(아무것도 바꾸지 않음). 그 출력도 그대로 보고한다.
+- `/health`의 `"state"`는 그 브리지의 runtime 폴더다. 이 저장소의 `tools/inkos-agent-bridge/runtime`이 아니면 다른 설치의 브리지이고, `doctor`는 경고, `start`·`job start`는 exit 3으로 멈춘다.
+  `"state"`가 없는 브리지(1.2.0 이전 설치)도 다른 설치로 본다.
+- 사용자가 바꾸라고 하면 `sh tools/setup-cloud.sh --project test-env --replace`. 바꾸기 전에 `~/.local/bin/inkos`, `~/.local/bin/inkos-agent`, `~/.bashrc`를 링크 그대로
+  `~/.local/bin/.inkos-ko-backup/<UTC 시각>/`에 복사하고 `README`(무엇을 바꿨는지)와 `restore.sh`를 남긴다.
+  되돌리기: `sh ~/.local/bin/.inkos-ko-backup/<UTC 시각>/restore.sh`(원래 없던 것은 지운다). 다른 클론의 브리지는 그 클론에서 `inkos-agent stop`으로 끈다.
+- 설치 스크립트는 링크를 따라 쓰지 않는다. 임시 파일에 쓰고 이름을 바꿔 넣으므로 링크 자체가 바뀌고, 링크가 가리키던 파일은 그대로다.
+
 ## 1. 설치
 
 ```sh
@@ -31,7 +51,12 @@ sh tools/setup-cloud.sh --project test-env      # 작품 프로젝트 폴더: <�
 ```
 
 - Codex 클라우드는 환경의 Setup script에 `tools/inkos-agent-bridge/setup/codex-cloud-setup.sh` 내용을 넣어 설치 단계에서 돌려도 된다.
-- 확인: `node -v`(22.16 이상), `inkos --version`, `ls test-env/AGENTS.md`, `cat test-env/.gitignore`(`*` 한 줄), `git status --short`에 `test-env`가 없어야 한다.
+- 확인: `node -v`(22.16 이상. node 24는 Codex에서 확인(v24.19.0)), `inkos --version`, `ls test-env/AGENTS.md`,
+  `cat test-env/.gitignore`(3줄: `*`, `runtime/`, `inkos.pre-agent.json`), `git status --short`에 `test-env`가 없어야 한다.
+- pnpm은 lockfile의 9.15.9로 고정한다. 설치된 pnpm이 다른 버전이면 `corepack pnpm@9.15.9`, 그것도 안 되면 `npx -y pnpm@9.15.9`로 실행한다.
+  출력의 `[setup] pnpm: 9.15.9 via '…' (installed pnpm: …)` 줄을 보고에 붙인다.
+- setup은 `~/.bashrc` 끝에 2줄을 덧붙인다: `# inkos-ko setup` 줄과 그다음 `export PATH=… INKOS_BIN=… INKOS_LOCALE=ko INKOS_AGENT_PROJECT=…` 줄.
+  같은 설치로 다시 돌리면 그 2줄을 새로 바꿔 쓸 뿐 늘지 않는다. 되돌리기: 그 2줄을 지운다(`--replace`였다면 `restore.sh`가 원래 `~/.bashrc`를 되살린다).
 - 설치 중 인터넷이 막혀 실패하면 실패 출력과 막힌 주소를 그대로 보고하고 멈춘다.
 
 ## 2. doctor
@@ -120,9 +145,10 @@ env -u HTTPS_PROXY -u https_proxy -u HTTP_PROXY -u http_proxy -u ALL_PROXY -u al
 python3 -I tools/inkos-agent-bridge/tests/test_bridge.py | tail -1
 python3 -I tools/tests/test_novel_drive.py | tail -1
 python3 -I tools/tests/test_novel_brief.py | tail -1
+python3 -I tools/tests/test_setup_scripts.py | tail -1
 ```
 
-실패 기준: 기준선은 core 757 · studio 307 · cli 101 = 1,165 통과, 브리지 33/33, Drive 38/38, novel-brief 27/27(Claude Code, 7단계).
+실패 기준: 기준선은 core 757 · studio 307 · cli 101 = 1,165 통과, 브리지 38/38, Drive 38/38, novel-brief 27/27, 설치 스크립트 44/44(Claude Code, 7-b).
 통과 수가 이보다 적거나 실패가 하나라도 있으면 실패다. 실패한 시험 이름과 출력 원문을 보고하고, 고치지 않는다.
 
 ## 7. 보고 양식
@@ -133,12 +159,13 @@ python3 -I tools/tests/test_novel_brief.py | tail -1
 [코덱스] [보고] 환경 시험 / 브랜치 claude/eeum-n0rsol / 커밋 <해시>
 한 일: 설치, doctor, lzma, 시험 작품 1화, 대화형 질문, 압축·복원, 시험
 증거:
-- 0~1: node -v, inkos --version, git status(작품 폴더 없음)
+- 0~1: node -v, inkos --version, `[setup] pnpm:` 줄, .gitignore 3줄, git status(작품 폴더 없음)
 - 2: doctor 출력 원문, bridge ready
 - 3: lzma ok / 없음, xz 실행 파일 유무
 - 4: 인터뷰·설계 후 질문 원문과 고른 답, 1화 제목·분량·감사 의견 수, lastAppliedChapter, --context 원문이 들어간 프롬프트 줄, 영어·중국어 줄 유무
 - 5: 압축본 이름·크기·sha256, 복원 뒤 status 비교, join 일치
-- 6: 시험 수(core / studio / cli, 브리지, Drive, novel-brief)
+- 기존 설치 확인: ls·포트·/health 출력 원문, setup의 exit 3 출력(있었다면)
+- 6: 시험 수(core / studio / cli, 브리지, Drive, novel-brief, 설치 스크립트)
 - 브리지 요청 수와 상태(delivered / failed / abandoned)
 바뀐 파일: 없음(코드 변경 없음)
 깨질 수 있는 것: (이 환경에서만 다르게 동작한 것)

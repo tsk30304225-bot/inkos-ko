@@ -53,6 +53,21 @@ def next_request():
 try:
     cli("start")
     check("health", '"session-mediated"' in cli("status").stdout)
+    check("health reports this installation's runtime", f'"state": "{(tmp / "state").resolve()}"' in cli("status").stdout)
+
+    # 0. another installation (other runtime) on the same port is detected, not used
+    other = {**ENV, "INKOS_AGENT_STATE": str(tmp / "other-state")}
+    def other_cli(*args):
+        return subprocess.run([sys.executable, "-I", str(CLI), *args], env=other, capture_output=True, text=True)
+    doc = other_cli("doctor")
+    check("doctor warns about another installation's bridge", doc.returncode == 1 and "NOT this installation's" in doc.stdout
+          and str((tmp / "state").resolve()) in doc.stdout, doc.stdout + doc.stderr)
+    started = other_cli("start")
+    check("start refuses another installation's bridge (exit 3)", started.returncode == 3 and "another bridge" in started.stderr, started.stderr)
+    blocked_job = other_cli("job", "start", "--", "stream")
+    check("job start refuses another installation's bridge (exit 3)", blocked_job.returncode == 3 and "another bridge" in blocked_job.stderr
+          and not (tmp / "other-state" / "jobs").exists(), blocked_job.stderr)
+    check("doctor of this installation reports the bridge as its own", "NOT this installation's" not in cli("doctor", check=False).stdout)
 
     # 1. streaming text answer delivered after keepalives
     jid = cli("job", "start", "--", "stream").stdout.strip()

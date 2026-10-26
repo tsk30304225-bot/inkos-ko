@@ -338,7 +338,7 @@ class Handler(BaseHTTPRequestHandler):
             for meta in iter_meta():
                 counts[meta.get("status", "?")] = counts.get(meta.get("status", "?"), 0) + 1
             self.send_json(200, {"mode": "session-mediated", "bridge": VERSION, "pid": os.getpid(),
-                                 "base_url": BASE_URL, "requests": counts})
+                                 "base_url": BASE_URL, "state": str(STATE), "root": str(ROOT), "requests": counts})
         elif path in ("/v1/models", "/models"):
             self.send_json(200, {"object": "list", "data": [
                 {"id": MODEL_ID, "object": "model", "owned_by": "agent-session"}]})
@@ -511,6 +511,21 @@ def bridge_up() -> bool:
         return False
 
 
+def foreign_bridge() -> str | None:
+    """Why the bridge answering on PORT belongs to another installation (its requests
+    would land in that installation's runtime), or None when it is this one or none is up."""
+    try:
+        health = get_health()
+    except (urllib.error.URLError, OSError, ValueError):
+        return None
+    if health.get("mode") == "session-mediated" and health.get("state") == str(STATE):
+        return None
+    owner = health.get("state") or f"unknown (bridge {health.get('bridge', '?')} does not report its runtime)"
+    return (f"port {PORT} is served by another bridge (pid {health.get('pid', '?')}, runtime {owner}); "
+            f"this installation's runtime is {STATE}. Stop that bridge (its own `inkos-agent stop`) "
+            f"or set INKOS_AGENT_PORT to a free port")
+
+
 def inkos_bin() -> str:
     return os.environ.get("INKOS_BIN") or shutil.which("inkos") or "inkos"
 
@@ -566,6 +581,9 @@ def override_problems(project: Path) -> list[str]:
 
 def cmd_start(args):
     STATE.mkdir(parents=True, exist_ok=True)
+    foreign = foreign_bridge()
+    if foreign:
+        die(foreign, 3)
     if not bridge_up():
         log = (STATE / "bridge.log").open("a")
         child = subprocess.Popen([sys.executable, str(Path(__file__).resolve()), "serve"],
@@ -635,7 +653,13 @@ def cmd_doctor(args):
     node = shutil.which("node")
     print(f"node         : {subprocess.run(['node', '--version'], capture_output=True, text=True).stdout.strip() if node else 'missing'}")
     print(f"project      : {project} ({'ok' if (project / 'inkos.json').exists() else 'no inkos.json'})")
-    print(f"bridge       : {'up' if bridge_up() else 'down'} at {BASE_URL}")
+    foreign = foreign_bridge()
+    if foreign:
+        ok = False
+        print(f"bridge       : up at {BASE_URL}, but NOT this installation's")
+        print(f"WARNING      : {foreign}")
+    else:
+        print(f"bridge       : {'up' if bridge_up() else 'down'} at {BASE_URL}")
     proxies = [k for k in PROXY_KEYS if os.environ.get(k)]
     print(f"proxy env    : {', '.join(proxies) or 'none'} ({'stripped for inkos jobs' if proxies else 'nothing to strip'})")
     for problem in override_problems(project):
@@ -691,6 +715,9 @@ def cmd_job(args):
         rest = strip_dashes(args.rest)
         if not rest:
             die("usage: inkos-agent job start -- <inkos args>")
+        foreign = foreign_bridge()
+        if foreign:
+            die(foreign, 3)
         if not bridge_up():
             die("bridge is down; run `inkos-agent start` first")
         project = project_dir(args)

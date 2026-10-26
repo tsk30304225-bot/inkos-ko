@@ -380,3 +380,11 @@ names, scene order, or signature combinations" 원칙을 그대로 지킨다). �
     인터뷰 답은 출력된 질문 번호를 보고(예시는 7개일 때), 6절에 실패 기준(기준선 1,165 / 33 / 38 / 27).
   - "N화 써줘" 해석(사용자 결정)을 PLAN·RUNTIME "작가 선택"·브리지 AGENTS·CLAUDE.md에 같은 문장으로. 6단계 기록에는 결정 전의 해석이라는 주석만.
   - 시험: 1,165 통과(core 757 / studio 307 / cli 101), 브리지 33/33, Drive 38/38, novel-brief 27/27. 코드 변경 없음.
+- 2026-10-26 (`claude/eeum-n0rsol`): **환경 시험 결과(e99aa31).** Grok: node 22.20에서 통과, 설치 중 링크 사고(다른 클론의 `dist/index.js`를 런처로 덮어씀) 발생 후 복구됨.
+  Codex: node 24.19에서 통과, 미리 깔린 pnpm 11.25.0 때문에 9.15.9를 수동으로 PATH 앞에 둠. 둘 다 1,165 / 33 / 38 / 27.
+- 2026-10-26 (`claude/eeum-n0rsol`): **7-b `(stage 7-b)` — 설치 안전성.** 근거는 `korean-port/verification/stage-7b.md`.
+  - `setup-cloud.sh`·`install.sh`: 링크를 따라 쓰지 않음(임시 파일 → rename). 바꾸기 전에 `inkos`·`inkos-agent`·`~/.bashrc` 블록을 모두 확인, 다른 설치면 목록 출력 후 exit 3.
+    `--replace`는 `~/.local/bin/.inkos-ko-backup/<시각>/`에 링크 그대로 백업하고 `restore.sh`를 남김. pnpm 9.15.9 고정(corepack → npx), 쓴 버전 출력.
+  - 브리지 `/health`에 `state`(runtime)·`root`. 다른 설치의 브리지면 doctor 경고, start·job start exit 3.
+  - 문서: ENV_TEST "기존 설치 확인", `.gitignore` 3줄, `~/.bashrc` 2줄·되돌리기, node 24 "Codex에서 확인(v24.19.0)". RUNTIME·브리지 AGENTS.
+  - 시험(프록시 변수 제거): core 757 / studio 307 / cli 101 = 1,165 통과, 브리지 38/38(+5), Drive 38/38, novel-brief 27/27, 설치 스크립트 44/44(새 파일). 옛 스크립트는 링크 대상 보존 시험에서 실패.

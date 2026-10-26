@@ -11,10 +11,17 @@ sh tools/setup-cloud.sh            # 기본 작품 프로젝트: <저장소>/nov
 
 스크립트가 하는 일:
 
-1. Node 22.16 이상·python3 확인, pnpm이 없으면 설치, `pnpm install --frozen-lockfile && pnpm -r build`
+1. Node 22.16 이상·python3 확인(node 24는 Codex에서 확인(v24.19.0)), lockfile의 pnpm 9.15.9로 `install --frozen-lockfile && -r build`.
+   설치된 pnpm이 9.15.9가 아니면 `corepack pnpm@9.15.9`, 안 되면 `npx -y pnpm@9.15.9`로 실행하고 쓴 버전을 출력한다(`package.json`은 고치지 않는다).
 2. `~/.local/bin/inkos` 실행기 생성(빌드 결과 `packages/cli/dist/index.js`에는 실행 권한이 없어서 래퍼를 둔다)
 3. 작품 프로젝트가 없으면 `inkos init --lang ko`(OAuth 비밀값을 넣고 `--pull`을 주면 최신 보관본을 복원 — 위 원고 보관 지침의 사용자 확인을 먼저 받을 것)
 4. 브리지 설치(`install.sh --project`), `~/.bashrc`에 `PATH`·`INKOS_BIN`·`INKOS_LOCALE=ko`·`INKOS_AGENT_PROJECT` 추가, `inkos-agent doctor`
+
+이미 있는 설치: 바꾸기 전에 `~/.local/bin/inkos`, `~/.local/bin/inkos-agent`, `~/.bashrc`의 `# inkos-ko setup` 블록을 모두 확인한다.
+하나라도 다른 설치의 것이면 무엇이 어디를 가리키는지 출력하고 **exit 3**으로 멈춘다(아무것도 바꾸지 않음). `--replace`를 주면
+셋을 링크 그대로 `~/.local/bin/.inkos-ko-backup/<UTC 시각>/`에 복사하고(`README`, `restore.sh`) 바꾼다. 되돌리기는 `sh <백업 폴더>/restore.sh`.
+파일은 링크를 따라 쓰지 않는다(임시 파일에 쓰고 이름 바꾸기). `~/.bashrc`에 덧붙이는 것은 2줄(`# inkos-ko setup`과 `export …`)이고, 지우면 되돌아간다.
+브리지(`/health`)는 자기 runtime 폴더(`state`)를 알려 준다. 포트의 브리지가 이 설치의 것이 아니면 `doctor`는 경고, `start`·`job start`는 exit 3.
 
 API 키나 외부 모델 주소는 설정하지 않는다. `doctor`가 `modelOverrides … bypasses the bridge`를 보고하면 실제 API로 나가는 설정이 있다는 뜻이므로 사용자에게 먼저 묻는다.
 
