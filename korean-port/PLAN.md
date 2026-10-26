@@ -435,3 +435,13 @@ names, scene order, or signature combinations" 원칙을 그대로 지킨다). �
   - `install.sh --locale ko`(setup이 넘김)가 `runtime/locale`에 기록한다. 셸에 `INKOS_LOCALE`이 없으면 브리지가 job에 그 값을 넣는다(셸 값이 먼저, 기록이 없으면 그대로).
   - 실제 `book backup --list`(환경 언어를 쓰는 명령)로 확인했다: 기록이 없으면 중국어, `ko`면 한국어.
   - 시험(프록시 변수 제거, shim 경유): core 757 / studio 307 / cli 101 = 1,165 통과, 브리지 38/38, 브리지 프로젝트 기록 19/19, Drive 51/51, novel-brief 27/27, 설치 스크립트 58/58.
+- 2026-10-26: **7단계 마감(감독 [승인] 7-f).** 환경 시험 결과:
+
+  | 환경 | node | 커밋 | 결과 |
+  | --- | --- | --- | --- |
+  | Claude Code 클라우드 | 22.22.0 | `1049e79` | 통과. 1~7단계 전체(시험 작품 1화 생성·복원 포함), 시험 1,165 / 브리지 38 / 프로젝트 기록 19 / Drive 51 / novel-brief 27 / 설치 58 |
+  | Grok | 22.20 | `e99aa31`, `5a9afd9`, `28ef5cb` | 통과. 1화 생성·복원(e99aa31), 설치 안전성 재확인(exit 3·`--replace`·restore, 5a9afd9), pnpm 고정 재확인(npx 9.15.9, `.modules.yaml` pnpm@9.15.9, 28ef5cb) |
+  | Codex 클라우드 | 24.19.0 | `e99aa31`, `28ef5cb` | 통과. 1차는 pnpm을 손으로 고정했다(e99aa31). `f0bfe09`는 안쪽 pnpm 호출 때문에 설치 실패했다. `28ef5cb`는 corepack 9.15.9로 설치했고, 1화 2,986자·xz 21,328B 복원까지 통과했다(명령마다 export를 붙임, 7-f 이전) |
+
+  - Codex는 Codex 클라우드(같은 작업 안에서 작업 공간 유지)만 지원한다. ChatGPT '워크 모드'는 지원하지 않는다(RUNTIME "Codex 클라우드").
+  - 다음은 8단계 사용자 실사용 시험이다(사용자 진행). 실제 작품을 대화형 1~2화 쓰고 일괄 "두 화 더 써줘"를 한다. 실제 Drive 업로드는 이번에 처음 확인하고, 다른 세션에서 이어 쓰기를 1회 한다.

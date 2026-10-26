@@ -285,6 +285,7 @@ Drive API 주소는 `oauth2.googleapis.com`, `www.googleapis.com`이다. 네트�
 
 ## Codex 클라우드
 
+- Codex는 **Codex 클라우드**(같은 작업 안에서 작업 공간 유지)에서 확인했다. ChatGPT의 '워크 모드'는 메시지 사이에 작업 위치가 바뀌거나 사라져 지원하지 않는다(2026-10-26 확인).
 - 기본 경로(사용자의 실행 방식, 2026-10-26): 저장소를 연결하지 않는다. 작업은 git 저장소가 없는 빈 `/workspace`에서 시작하고, 작업 단계에 인터넷이 열려 있다.
   작업 안에서 `git clone -b claude/eeum-n0rsol https://github.com/tsk30304225-bot/inkos-ko && cd inkos-ko` → `sh tools/setup-cloud.sh`를 실행한다. 1차 환경 시험이 이 방식으로 통과했다.
 - 작업이 끝나면 `/workspace`가 남지 않는다. 실제 작품은 원고 보관 지침의 "작업 시작과 끝" 순서(Drive에서 압축본 받기 → `unpack` → `status`)로 시작하고, 끝낼 때 압축본을 올린다.
