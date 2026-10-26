@@ -39,7 +39,7 @@ curl -s --max-time 3 http://127.0.0.1:4568/health || echo "브리지 없음"
 - 하나만 있으면 출력을 보고에 붙이고 1절로 간다. 다른 설치가 있으면 1절의 `setup-cloud.sh`가 무엇이 어디를 가리키는지 출력하고 **exit 3**으로 멈춘다(아무것도 바꾸지 않음). 그 출력도 그대로 보고한다.
 - `/health`의 `"state"`는 그 브리지의 runtime 폴더다. 이 저장소의 `tools/inkos-agent-bridge/runtime`이 아니면 다른 설치의 브리지이고, `doctor`는 경고, `start`·`job start`는 exit 3으로 멈춘다.
   `"state"`가 없는 브리지(1.2.0 이전 설치)도 다른 설치로 본다.
-- 사용자가 바꾸라고 하면 `sh tools/setup-cloud.sh --project test-env --replace`. 바꾸기 전에 `~/.local/bin/inkos`, `~/.local/bin/inkos-agent`, `~/.bashrc`를 링크 그대로
+- 사용자가 바꾸라고 하면 `sh tools/setup-cloud.sh --project test-env --replace`. 바꾸기 전에 `~/.local/bin/inkos`, `~/.local/bin/inkos-agent`, `~/.bashrc`(링크가 아닐 때)를 링크 그대로
   `~/.local/bin/.inkos-ko-backup/<UTC 시각>/`에 복사하고 `README`(무엇을 바꿨는지)와 `restore.sh`를 남긴다.
   되돌리기: `sh ~/.local/bin/.inkos-ko-backup/<UTC 시각>/restore.sh`(원래 없던 것은 지운다). 다른 클론의 브리지는 그 클론에서 `inkos-agent stop`으로 끈다.
 - 설치 스크립트는 링크를 따라 쓰지 않는다. 임시 파일에 쓰고 이름을 바꿔 넣으므로 링크 자체가 바뀌고, 링크가 가리키던 파일은 그대로다.
@@ -56,7 +56,8 @@ sh tools/setup-cloud.sh --project test-env      # 작품 프로젝트 폴더: <�
 - pnpm은 lockfile의 9.15.9로 고정한다. 설치된 pnpm이 다른 버전이면 `corepack pnpm@9.15.9`, 그것도 안 되면 `npx -y pnpm@9.15.9`로 실행한다.
   출력의 `[setup] pnpm: 9.15.9 via '…' (installed pnpm: …)` 줄을 보고에 붙인다.
 - setup은 `~/.bashrc` 끝에 2줄을 덧붙인다: `# inkos-ko setup` 줄과 그다음 `export PATH=… INKOS_BIN=… INKOS_LOCALE=ko INKOS_AGENT_PROJECT=…` 줄.
-  같은 설치로 다시 돌리면 그 2줄을 새로 바꿔 쓸 뿐 늘지 않는다. 되돌리기: 그 2줄을 지운다(`--replace`였다면 `restore.sh`가 원래 `~/.bashrc`를 되살린다).
+  같은 설치로 다시 돌리면 그 2줄을 새로 바꿔 쓸 뿐 늘지 않는다. 파일 권한은 그대로 둔다. 되돌리기: 그 2줄을 지운다(`--replace`였다면 `restore.sh`가 원래 `~/.bashrc`를 되살린다).
+  `~/.bashrc`가 링크(dotfiles 관리 도구 등)이면 고치지 않고 그 2줄을 출력한다(`a link, left unchanged`). 사용자가 직접 넣는다. 나머지 설치는 계속된다.
 - 설치 중 인터넷이 막혀 실패하면 실패 출력과 막힌 주소를 그대로 보고하고 멈춘다.
 
 ## 2. doctor
@@ -148,7 +149,7 @@ python3 -I tools/tests/test_novel_brief.py | tail -1
 python3 -I tools/tests/test_setup_scripts.py | tail -1
 ```
 
-실패 기준: 기준선은 core 757 · studio 307 · cli 101 = 1,165 통과, 브리지 38/38, Drive 38/38, novel-brief 27/27, 설치 스크립트 44/44(Claude Code, 7-b).
+실패 기준: 기준선은 core 757 · studio 307 · cli 101 = 1,165 통과, 브리지 38/38, Drive 38/38, novel-brief 27/27, 설치 스크립트 50/50(Claude Code, 7-b 보완).
 통과 수가 이보다 적거나 실패가 하나라도 있으면 실패다. 실패한 시험 이름과 출력 원문을 보고하고, 고치지 않는다.
 
 ## 7. 보고 양식

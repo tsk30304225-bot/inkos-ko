@@ -84,3 +84,14 @@ rc=3
 ## 시험
 
 프록시 변수 제거: core 757 / studio 307 / cli 101 = 1,165 통과. 브리지 38/38, Drive 38/38, novel-brief 27/27, 설치 스크립트 44/44.
+
+## 승인 후 보완 (감독 [승인] 7-b의 작은 보완 3건)
+
+1. `test_setup_scripts.py`가 빌드 산출물 없이 돈다. 시험은 `tools/setup-cloud.sh`와 브리지 폴더를 임시 저장소에 복사하고 가짜 `packages/cli/dist/index.js`를 두고 돈다.
+   `tools/`만 있는(빌드하지 않은, `packages/` 없는) 복사본에서 50/50 통과. 첫 사례가 실패해도 traceback 대신 FAIL로 끝나게 읽기를 고쳤다.
+2. `~/.bashrc`가 링크면 `--replace`여도 고치지 않는다. "a link, left unchanged"와 넣을 2줄을 출력하고 나머지 설치는 계속한다(exit 0). 링크는 기존 설치 목록(exit 3 사유)과 백업·`restore.sh`에서도 빠진다.
+   시험: 링크와 링크 대상 바이트 그대로, 2줄 출력, `inkos`·`inkos-agent`는 설치됨. `--replace` 사례도 `.bashrc` 링크 유지로 바꿈.
+3. 권한 유지: `~/.bashrc`와 프로젝트 `.gitignore`는 원래 권한으로 다시 쓴다(시험: 600, 640 유지). 처음 만드는 파일은 644.
+   (`.gitignore` 내용 처리는 그대로: 저장소 안 프로젝트면 `inkos init`이 쓴 3줄을 `*`로 바꾸고 브리지가 2줄을 더해 3줄.)
+
+시험: 설치 스크립트 44 → 50/50.

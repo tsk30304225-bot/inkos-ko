@@ -16,9 +16,10 @@
 # Existing installs: before changing anything it checks ~/.local/bin/inkos,
 # ~/.local/bin/inkos-agent and its own block in ~/.bashrc. When any of them
 # belongs to another installation it prints what points where and exits 3.
-# --replace backs all three up to ~/.local/bin/.inkos-ko-backup/<time>/
-# (undo with the restore.sh written there) and replaces them. Files are never
-# written through a symbolic link (temporary file + rename).
+# --replace backs them up to ~/.local/bin/.inkos-ko-backup/<time>/ (undo with
+# the restore.sh written there) and replaces them. Files are never written
+# through a symbolic link (temporary file + rename). A ~/.bashrc that is a link
+# (dotfiles managers) is left alone: the two lines are printed to add by hand.
 #
 # No model API key or remote model endpoint is configured; the session answers
 # model calls through tools/inkos-agent-bridge.
@@ -54,6 +55,7 @@ write_file() {  # stdin -> $1 via a temporary file and rename (never through a l
   chmod "${2:-644}" "$tmp"
   replace_path "$tmp" "$1"
 }
+mode_of() { if [ -f "$1" ]; then python3 -c 'import os, sys; print(oct(os.stat(sys.argv[1]).st_mode & 0o7777)[2:])' "$1"; else echo "$2"; fi; }
 describe() { if [ -L "$1" ]; then echo "$1 -> $(readlink "$1")"; elif [ -e "$1" ]; then echo "$1 (file, not a link)"; else echo "$1 (absent)"; fi; }
 exists() { [ -e "$1" ] || [ -L "$1" ]; }
 # Our ~/.bashrc block: the marker line and the export line after it.
@@ -74,10 +76,7 @@ if exists "$BIN/inkos-agent" && [ "$(readlink "$BIN/inkos-agent" 2>/dev/null || 
   foreign="$foreign
   $(describe "$BIN/inkos-agent")"
 fi
-if [ -L "$PROFILE" ]; then
-  foreign="$foreign
-  $(describe "$PROFILE") (setup would replace the link with a file)"
-elif [ -n "$(profile_block)" ] && [ "$(profile_block)" != "$MARK
+if [ ! -L "$PROFILE" ] && [ -n "$(profile_block)" ] && [ "$(profile_block)" != "$MARK
 $EXPORT_LINE" ]; then
   foreign="$foreign
   $PROFILE has another inkos-ko block: $(profile_block | tail -n 1)"
@@ -100,7 +99,9 @@ if [ -n "$foreign" ]; then
         printf 'rm -f "%s"\n' "$BIN/$item"
       fi
     done
-    if exists "$PROFILE"; then
+    if [ -L "$PROFILE" ]; then
+      :  # a linked ~/.bashrc is never changed, so there is nothing to restore
+    elif exists "$PROFILE"; then
       cp -P "$PROFILE" "$BACKUP/bashrc"
       printf 'rm -f "%s"; cp -P "$B/bashrc" "%s"\n' "$PROFILE" "$PROFILE"
     else
@@ -144,7 +145,8 @@ if [ ! -f "$PROJECT/inkos.json" ]; then
 fi
 # Keep the novel out of the code repository when it lives inside it.
 case $PROJECT in "$REPO"/*)
-  [ -f "$PROJECT/.gitignore" ] && grep -qxF '*' "$PROJECT/.gitignore" || printf '*\n' | write_file "$PROJECT/.gitignore" ;;
+  [ -f "$PROJECT/.gitignore" ] && grep -qxF '*' "$PROJECT/.gitignore" \
+    || printf '*\n' | write_file "$PROJECT/.gitignore" "$(mode_of "$PROJECT/.gitignore" 644)" ;;
 esac
 
 if [ $REPLACE -eq 1 ]; then
@@ -152,12 +154,22 @@ if [ $REPLACE -eq 1 ]; then
 else
   sh "$REPO/tools/inkos-agent-bridge/install.sh" --project "$PROJECT" >/dev/null
 fi
-# Two lines in ~/.bashrc (marker + export); an old inkos-ko block is replaced, the rest is kept.
-{
-  [ -f "$PROFILE" ] && awk -v m="$MARK" '$0 == m { getline; next } { print }' "$PROFILE"
-  echo "$MARK"
-  echo "$EXPORT_LINE"
-} | write_file "$PROFILE"
+# Two lines in ~/.bashrc (marker + export); an old inkos-ko block is replaced,
+# the rest and the file's permissions are kept. A linked ~/.bashrc is not touched.
+if [ -L "$PROFILE" ]; then
+  if [ "$(profile_block)" != "$MARK
+$EXPORT_LINE" ]; then
+    say "$(describe "$PROFILE"): a link, left unchanged. Add these two lines to it yourself"
+    say "(and remove an older '$MARK' line and the line after it, if there is one):"
+    printf '%s\n%s\n' "$MARK" "$EXPORT_LINE"
+  fi
+else
+  {
+    [ -f "$PROFILE" ] && awk -v m="$MARK" '$0 == m { getline; next } { print }' "$PROFILE"
+    echo "$MARK"
+    echo "$EXPORT_LINE"
+  } | write_file "$PROFILE" "$(mode_of "$PROFILE" 644)"
+fi
 
 say "project: $PROJECT"
 "$BIN/inkos-agent" doctor || true

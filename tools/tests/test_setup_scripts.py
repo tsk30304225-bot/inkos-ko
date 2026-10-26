@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Offline test of tools/setup-cloud.sh and tools/inkos-agent-bridge/install.sh.
 
-Each case runs with a temporary HOME. Nothing is built or downloaded: the pnpm
-cases put fake pnpm/corepack/npx scripts first on PATH and only record how they
-were called. The link cases check that a link at a target path is replaced
+Each case runs with a temporary HOME against a temporary copy of the scripts
+(tools/ only) with a fake build output, so the test needs no build and no
+network. The pnpm cases put fake pnpm/corepack/npx scripts first on PATH and
+only record how they were called. The link cases check that a link at a target path is replaced
 itself and that the bytes of the file it pointed to stay the same.
 """
 import os
@@ -14,13 +15,21 @@ import sys
 import tempfile
 from pathlib import Path
 
-REPO = Path(__file__).resolve().parents[2]
+SOURCE = Path(__file__).resolve().parents[2]
+results = []
+root = Path(tempfile.mkdtemp(prefix="setup-scripts-test-"))
+# A repository copy: the two scripts, the bridge, and a fake CLI build.
+REPO = root / "repo"
+(REPO / "tools").mkdir(parents=True)
+shutil.copy2(SOURCE / "tools" / "setup-cloud.sh", REPO / "tools" / "setup-cloud.sh")
+shutil.copytree(SOURCE / "tools" / "inkos-agent-bridge", REPO / "tools" / "inkos-agent-bridge", symlinks=True,
+                ignore=shutil.ignore_patterns("runtime", "__pycache__", "tests"))
+(REPO / "packages" / "cli" / "dist").mkdir(parents=True)
+(REPO / "packages" / "cli" / "dist" / "index.js").write_text("console.log('2.0.0 (fake build for setup tests)');\n")
 SETUP = REPO / "tools" / "setup-cloud.sh"
 INSTALL = REPO / "tools" / "inkos-agent-bridge" / "install.sh"
 AGENT_TARGET = REPO / "tools" / "inkos-agent-bridge" / "inkos-agent"
 MARK = "# inkos-ko setup"
-results = []
-root = Path(tempfile.mkdtemp(prefix="setup-scripts-test-"))
 
 
 def check(name, condition, detail=""):
@@ -75,15 +84,41 @@ bin_ = home / ".local" / "bin"
 check("fresh install succeeds", r.returncode == 0, r.stdout + r.stderr)
 check("inkos launcher is a plain file", not (bin_ / "inkos").is_symlink() and (bin_ / "inkos").read_text() == launcher())
 check("inkos-agent links to this bridge", os.readlink(bin_ / "inkos-agent") == str(AGENT_TARGET))
-bashrc = (home / ".bashrc").read_text()
-check("~/.bashrc gets exactly two lines", bashrc.splitlines()[0] == MARK and len(bashrc.splitlines()) == 2
+bashrc = (home / ".bashrc").read_text() if (home / ".bashrc").exists() else ""
+check("~/.bashrc gets exactly two lines", bashrc.splitlines()[:1] == [MARK] and len(bashrc.splitlines()) == 2
       and f'INKOS_AGENT_PROJECT="{project}"' in bashrc, bashrc)
-gi = (project / ".gitignore").read_text().splitlines()
+gi = (project / ".gitignore").read_text().splitlines() if (project / ".gitignore").exists() else []
 check("project .gitignore lists runtime/ and inkos.pre-agent.json", gi == ["runtime/", "inkos.pre-agent.json"], gi)
 r = run(SETUP, env, "--project", str(project), "--no-build")
 check("rerun of the same setup is not an 'existing installation'", r.returncode == 0, r.stdout + r.stderr)
 check("rerun keeps one ~/.bashrc block", (home / ".bashrc").read_text() == bashrc)
 check("rerun leaves no backup", not (bin_ / ".inkos-ko-backup").exists())
+
+# ---------- 1a. permissions of ~/.bashrc and the project .gitignore are kept ----------
+base, home, project, fake, env = case("modes")
+(home / ".bashrc").write_text('alias ll="ls -l"\n')
+(home / ".bashrc").chmod(0o600)
+(project / ".gitignore").write_text("node_modules/\n")
+(project / ".gitignore").chmod(0o640)
+r = run(SETUP, env, "--project", str(project), "--no-build")
+check("~/.bashrc keeps mode 600", r.returncode == 0 and oct((home / ".bashrc").stat().st_mode & 0o777) == "0o600",
+      oct((home / ".bashrc").stat().st_mode & 0o777))
+check("project .gitignore keeps mode 640", oct((project / ".gitignore").stat().st_mode & 0o777) == "0o640",
+      oct((project / ".gitignore").stat().st_mode & 0o777))
+
+# ---------- 1b. ~/.bashrc is a link (dotfiles manager): left alone, lines printed ----------
+base, home, project, fake, env = case("bashrc-link")
+dot_rc = base / "other" / "dotfiles-bashrc"
+dot_bytes = decoy(dot_rc, 'alias ll="ls -l"\n')
+(home / ".bashrc").symlink_to(dot_rc)
+r = run(SETUP, env, "--project", str(project), "--no-build")
+check("linked ~/.bashrc: setup continues (exit 0)", r.returncode == 0, r.stdout + r.stderr)
+check("linked ~/.bashrc: link and its target unchanged",
+      os.readlink(home / ".bashrc") == str(dot_rc) and dot_rc.read_bytes() == dot_bytes)
+check("linked ~/.bashrc: the two lines are printed to add by hand",
+      "a link, left unchanged" in r.stdout and f"{MARK}\nexport PATH=" in r.stdout and f'INKOS_AGENT_PROJECT="{project}"' in r.stdout, r.stdout)
+check("linked ~/.bashrc: the rest is installed", (home / ".local/bin/inkos").is_file()
+      and os.readlink(home / ".local/bin/inkos-agent") == str(AGENT_TARGET))
 
 # ---------- 2. inkos is a link into another clone: stop, change nothing ----------
 base, home, project, fake, env = case("foreign-inkos")
@@ -135,7 +170,8 @@ bin_.mkdir(parents=True)
 (bin_ / "inkos-agent").symlink_to(other_agent)
 (home / ".bashrc").symlink_to(other_rc)
 r = run(SETUP, env, "--project", str(project), "--no-build")
-check("three foreign items listed before --replace", r.returncode == 3 and r.stderr.count(" -> ") == 3, r.stderr)
+check("two foreign items listed before --replace (a linked ~/.bashrc is not one)",
+      r.returncode == 3 and r.stderr.count(" -> ") == 2 and ".bashrc" not in r.stderr, r.stderr)
 r = run(SETUP, env, "--project", str(project), "--no-build", "--replace")
 check("--replace succeeds", r.returncode == 0, r.stdout + r.stderr)
 check("--replace: link targets' bytes unchanged",
@@ -143,13 +179,12 @@ check("--replace: link targets' bytes unchanged",
 check("--replace: inkos is now our launcher file", not (bin_ / "inkos").is_symlink() and (bin_ / "inkos").read_text() == launcher())
 check("--replace: inkos-agent links to this bridge", os.readlink(bin_ / "inkos-agent") == str(AGENT_TARGET))
 rc_now = home / ".bashrc"
-check("--replace: ~/.bashrc is a file with the old lines plus the block",
-      not rc_now.is_symlink() and rc_now.read_text().startswith('alias ll="ls -l"\n' + MARK + "\n"), rc_now.read_text())
+check("--replace: a linked ~/.bashrc stays a link", os.readlink(rc_now) == str(other_rc))
 backups = sorted((bin_ / ".inkos-ko-backup").iterdir())
 check("one backup directory", len(backups) == 1, backups)
 b = backups[0]
 check("backup keeps the original links", os.readlink(b / "inkos") == str(other_js) and os.readlink(b / "inkos-agent") == str(other_agent)
-      and os.readlink(b / "bashrc") == str(other_rc))
+      and not (b / "bashrc").exists())
 check("backup has README and restore.sh", (b / "README").is_file() and (b / "restore.sh").is_file()
       and f"undo: sh {b}/restore.sh" in r.stdout, r.stdout)
 check("install.sh used the same backup (no second backup dir)", len(list((bin_ / ".inkos-ko-backup").iterdir())) == 1)
@@ -195,7 +230,7 @@ check("install.sh --replace succeeds", r.returncode == 0, r.stdout + r.stderr)
 check("install.sh: link targets' bytes unchanged", other_agent.read_bytes() == agent_bytes
       and other_doc.read_bytes() == doc_bytes and other_gi.read_bytes() == gi_bytes)
 check("install.sh: project links became files", not (project / "AGENTS.md").is_symlink()
-      and (project / "AGENTS.md").read_bytes() == (REPO / "tools/inkos-agent-bridge/AGENTS.md").read_bytes())
+      and (project / "AGENTS.md").read_bytes() == (SOURCE / "tools/inkos-agent-bridge/AGENTS.md").read_bytes())
 check("install.sh: .gitignore keeps old lines and adds two",
       (project / ".gitignore").read_text().splitlines() == ["node_modules/", "runtime/", "inkos.pre-agent.json"])
 b = next((bin_ / ".inkos-ko-backup").iterdir())

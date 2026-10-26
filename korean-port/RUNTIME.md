@@ -20,7 +20,8 @@ sh tools/setup-cloud.sh            # 기본 작품 프로젝트: <저장소>/nov
 이미 있는 설치: 바꾸기 전에 `~/.local/bin/inkos`, `~/.local/bin/inkos-agent`, `~/.bashrc`의 `# inkos-ko setup` 블록을 모두 확인한다.
 하나라도 다른 설치의 것이면 무엇이 어디를 가리키는지 출력하고 **exit 3**으로 멈춘다(아무것도 바꾸지 않음). `--replace`를 주면
 셋을 링크 그대로 `~/.local/bin/.inkos-ko-backup/<UTC 시각>/`에 복사하고(`README`, `restore.sh`) 바꾼다. 되돌리기는 `sh <백업 폴더>/restore.sh`.
-파일은 링크를 따라 쓰지 않는다(임시 파일에 쓰고 이름 바꾸기). `~/.bashrc`에 덧붙이는 것은 2줄(`# inkos-ko setup`과 `export …`)이고, 지우면 되돌아간다.
+파일은 링크를 따라 쓰지 않는다(임시 파일에 쓰고 이름 바꾸기, 권한 유지). `~/.bashrc`에 덧붙이는 것은 2줄(`# inkos-ko setup`과 `export …`)이고, 지우면 되돌아간다.
+`~/.bashrc`가 링크(dotfiles 관리 도구 등)이면 고치지 않고 그 2줄을 출력하며, 백업·되돌리기 대상에서도 빠진다.
 브리지(`/health`)는 자기 runtime 폴더(`state`)를 알려 준다. 포트의 브리지가 이 설치의 것이 아니면 `doctor`는 경고, `start`·`job start`는 exit 3.
 
 API 키나 외부 모델 주소는 설정하지 않는다. `doctor`가 `modelOverrides … bypasses the bridge`를 보고하면 실제 API로 나가는 설정이 있다는 뜻이므로 사용자에게 먼저 묻는다.

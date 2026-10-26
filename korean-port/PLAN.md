@@ -388,3 +388,6 @@ names, scene order, or signature combinations" 원칙을 그대로 지킨다). �
   - 브리지 `/health`에 `state`(runtime)·`root`. 다른 설치의 브리지면 doctor 경고, start·job start exit 3.
   - 문서: ENV_TEST "기존 설치 확인", `.gitignore` 3줄, `~/.bashrc` 2줄·되돌리기, node 24 "Codex에서 확인(v24.19.0)". RUNTIME·브리지 AGENTS.
   - 시험(프록시 변수 제거): core 757 / studio 307 / cli 101 = 1,165 통과, 브리지 38/38(+5), Drive 38/38, novel-brief 27/27, 설치 스크립트 44/44(새 파일). 옛 스크립트는 링크 대상 보존 시험에서 실패.
+- 2026-10-26 (`claude/eeum-n0rsol`): **7-b 보완 `(stage 7-b)`.** 감독 승인: 7-b(작은 보완 3건). 근거는 `verification/stage-7b.md` "승인 후 보완".
+  - 설치 스크립트 시험이 빌드 없이 돎(임시 저장소 + 가짜 빌드 산출물, `tools/`만 있는 복사본에서 확인). 링크인 `~/.bashrc`는 고치지 않고 2줄 출력. `~/.bashrc`·`.gitignore` 권한 유지.
+  - 시험(프록시 변수 제거): core 757 / studio 307 / cli 101 = 1,165 통과, 브리지 38/38, Drive 38/38, novel-brief 27/27, 설치 스크립트 50/50.

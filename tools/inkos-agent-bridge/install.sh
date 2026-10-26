@@ -35,6 +35,7 @@ write_file() {
   chmod "${3:-644}" "$tmp"
   replace_path "$tmp" "$2"
 }
+mode_of() { if [ -f "$1" ]; then python3 -c 'import os, sys; print(oct(os.stat(sys.argv[1]).st_mode & 0o7777)[2:])' "$1"; else echo "$2"; fi; }
 describe() { if [ -L "$1" ]; then echo "$1 -> $(readlink "$1")"; elif [ -e "$1" ]; then echo "$1 (file, not a link)"; else echo "$1 (absent)"; fi; }
 
 if [ -n "$INKOS_VERSION" ] && ! command -v inkos >/dev/null; then
@@ -83,7 +84,7 @@ if [ -n "$PROJECT" ]; then
     for line in "runtime/" "inkos.pre-agent.json"; do
       grep -qxF "$line" "$PROJECT/.gitignore" 2>/dev/null || echo "$line"
     done
-  } | write_file - "$PROJECT/.gitignore"
+  } | write_file - "$PROJECT/.gitignore" "$(mode_of "$PROJECT/.gitignore" 644)"
   echo "project ready: $PROJECT (export INKOS_AGENT_PROJECT=$PROJECT)"
 fi
 "$HERE/inkos-agent" --version >/dev/null && echo "inkos-agent installed. Next: inkos-agent doctor && inkos-agent start"
