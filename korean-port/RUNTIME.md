@@ -19,7 +19,7 @@ sh tools/setup-cloud.sh            # 기본 작품 프로젝트: <저장소>/nov
    shim은 `~/.local/bin`이나 `~/.bashrc`에 넣지 않는다. 셸에 예전 `INKOS_PNPM_PIN_CMD`가 남아 있으면 shim은 버전을 다시 확인하지 않고 그 명령을 쓴다(직접 둘 일은 없다. 이상하면 `unset INKOS_PNPM_PIN_CMD`).
 2. `~/.local/bin/inkos` 실행기 생성(빌드 결과 `packages/cli/dist/index.js`에는 실행 권한이 없어서 래퍼를 둔다)
 3. 작품 프로젝트가 없으면 `inkos init --lang ko`(OAuth 비밀값을 넣고 `--pull`을 주면 최신 보관본을 복원 — 위 원고 보관 지침의 사용자 확인을 먼저 받을 것)
-4. 브리지 설치(`install.sh --project`, 작품 프로젝트 경로를 git 무시 위치 `tools/inkos-agent-bridge/runtime/project`에 기록), `~/.bashrc`에 `PATH`·`INKOS_BIN`·`INKOS_LOCALE=ko`·`INKOS_AGENT_PROJECT` 추가, `inkos-agent doctor`
+4. 브리지 설치(`install.sh --project … --locale ko`: 작품 프로젝트 경로와 CLI 언어를 git 무시 위치 `tools/inkos-agent-bridge/runtime/project`·`runtime/locale`에 기록. 셸에 `INKOS_LOCALE`이 없으면 브리지가 job에 `ko`를 넣는다), `~/.bashrc`에 `PATH`·`INKOS_BIN`·`INKOS_LOCALE=ko`·`INKOS_AGENT_PROJECT` 추가, `inkos-agent doctor`
 
 이미 있는 설치: 바꾸기 전에 `~/.local/bin/inkos`, `~/.local/bin/inkos-agent`, `~/.bashrc`의 `# inkos-ko setup` 블록을 모두 확인한다.
 하나라도 다른 설치의 것이면 무엇이 어디를 가리키는지 출력하고 **exit 3**으로 멈춘다(아무것도 바꾸지 않음). `--replace`를 주면

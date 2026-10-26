@@ -157,9 +157,9 @@ case $PROJECT in "$REPO"/*)
 esac
 
 if [ $REPLACE -eq 1 ]; then
-  sh "$REPO/tools/inkos-agent-bridge/install.sh" --project "$PROJECT" --replace >/dev/null
+  sh "$REPO/tools/inkos-agent-bridge/install.sh" --project "$PROJECT" --locale ko --replace >/dev/null
 else
-  sh "$REPO/tools/inkos-agent-bridge/install.sh" --project "$PROJECT" >/dev/null
+  sh "$REPO/tools/inkos-agent-bridge/install.sh" --project "$PROJECT" --locale ko >/dev/null
 fi
 # Two lines in ~/.bashrc (marker + export); an old inkos-ko block is replaced,
 # the rest and the file's permissions are kept. A linked ~/.bashrc is not touched.

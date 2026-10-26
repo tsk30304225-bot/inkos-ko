@@ -96,6 +96,7 @@ check("project .gitignore lists runtime/ and inkos.pre-agent.json", gi == ["runt
 recorded = base / "state" / "project"  # INKOS_AGENT_STATE of this case; by default tools/inkos-agent-bridge/runtime/
 check("the project is recorded in the bridge's runtime folder (runtime/project)",
       recorded.is_file() and recorded.read_text().strip() == str(project.resolve()))
+check("setup records the CLI locale ko in runtime/locale", (base / "state" / "locale").read_text().strip() == "ko")
 r = run(SETUP, env, "--project", str(project), "--no-build")
 check("rerun of the same setup is not an 'existing installation'", r.returncode == 0, r.stdout + r.stderr)
 check("rerun keeps one ~/.bashrc block", (home / ".bashrc").read_text() == bashrc)

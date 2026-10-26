@@ -1,6 +1,6 @@
 #!/bin/sh
 # Install the agent bridge (Linux, macOS, Codex cloud, Claude Code cloud).
-#   sh install.sh --project ~/my-novel [--install-inkos 1.8.0] [--force] [--replace]
+#   sh install.sh --project ~/my-novel [--locale ko] [--install-inkos 1.8.0] [--force] [--replace]
 # No API keys are read or written.
 #
 # Files are never written through a symbolic link: each one is written to a
@@ -10,13 +10,15 @@
 # up to ~/.local/bin/.inkos-ko-backup/<time>/ (with restore.sh) and replaces it.
 set -eu
 HERE=$(cd "$(dirname "$0")" && pwd)
-PROJECT=""; INKOS_VERSION=""; FORCE=0; REPLACE=0
+PROJECT=""; LOCALE=""; INKOS_VERSION=""; FORCE=0; REPLACE=0
 while [ $# -gt 0 ]; do
   case $1 in
     --project) PROJECT=$2; shift 2 ;;
     --install-inkos) INKOS_VERSION=$2; shift 2 ;;
     --force) FORCE=1; shift ;;
     --replace) REPLACE=1; shift ;;
+    --locale) LOCALE=$2; shift 2
+      case $LOCALE in ''|*[!A-Za-z_-]*) echo "invalid --locale '$LOCALE'" >&2; exit 2 ;; esac ;;
     *) echo "unknown option $1" >&2; exit 2 ;;
   esac
 done
@@ -92,5 +94,12 @@ if [ -n "$PROJECT" ]; then
   mkdir -p "$STATE_DIR"
   printf '%s\n' "$PROJECT" | write_file - "$STATE_DIR/project"
   echo "project ready: $PROJECT (recorded in $STATE_DIR/project)"
+fi
+if [ -n "$LOCALE" ]; then
+  # The CLI language for InkOS jobs when INKOS_LOCALE is not set in that shell.
+  STATE_DIR="${INKOS_AGENT_STATE:-$HERE/runtime}"
+  mkdir -p "$STATE_DIR"
+  printf '%s\n' "$LOCALE" | write_file - "$STATE_DIR/locale"
+  echo "locale recorded: $LOCALE (in $STATE_DIR/locale)"
 fi
 "$HERE/inkos-agent" --version >/dev/null && echo "inkos-agent installed. Next: inkos-agent doctor && inkos-agent start"

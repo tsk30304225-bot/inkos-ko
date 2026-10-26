@@ -26,7 +26,8 @@ for d in (home / ".local" / "bin", repo, novel):
 (novel / "inkos.json").write_text(json.dumps({"name": "novel", "language": "ko"}))
 # The setup launcher stands in for InkOS: it prints where and how it was run.
 fake = home / ".local" / "bin" / "inkos"
-fake.write_text('#!/bin/sh\n[ "$1" = --version ] && { echo 2.0.0; exit 0; }\necho "fake-inkos cwd=$(pwd) args=$*"\n')
+fake.write_text('#!/bin/sh\n[ "$1" = --version ] && { echo 2.0.0; exit 0; }\n'
+                'echo "fake-inkos cwd=$(pwd) args=$*"\necho "fake-inkos locale=${INKOS_LOCALE:-}"\n')
 fake.chmod(0o755)
 with socket.socket() as s:
     s.bind(("127.0.0.1", 0))
@@ -63,17 +64,23 @@ def job_log(jid):
 full = {**os.environ, "HOME": str(home)}
 full.pop("INKOS_AGENT_PROJECT", None)
 full.pop("INKOS_AGENT_STATE", None)
-r = subprocess.run(["sh", str(bridge / "install.sh"), "--project", str(novel)], env=full, capture_output=True, text=True)
+r = subprocess.run(["sh", str(bridge / "install.sh"), "--project", str(novel), "--locale", "ko"], env=full, capture_output=True, text=True)
 recorded = bridge / "runtime" / "project"
+locale_file = bridge / "runtime" / "locale"
 check("install.sh --project records the project in runtime/project",
       r.returncode == 0 and recorded.read_text(encoding="utf-8").strip() == str(novel.resolve()), r.stdout + r.stderr)
+check("install.sh --locale ko records the locale in runtime/locale", locale_file.read_text(encoding="utf-8").strip() == "ko")
+bad = subprocess.run(["sh", str(bridge / "install.sh"), "--project", str(tmp / "never"), "--locale", "k o"], env=full,
+                     capture_output=True, text=True)
+check("an invalid --locale stops before anything is written", bad.returncode == 2 and not (tmp / "never").exists(), bad.stderr)
 
 try:
     # 1. record present: commands from the repository root use the recorded project
     r = bare("doctor")
     check("doctor: project from runtime/project, inkos from ~/.local/bin", r.returncode in (0, 1)
           and f"project      : {novel.resolve()} (ok, from {recorded})" in r.stdout
-          and f"inkos binary : {fake} (2.0.0)" in r.stdout, r.stdout + r.stderr)
+          and f"inkos binary : {fake} (2.0.0)" in r.stdout
+          and f"locale       : ko (from {locale_file})" in r.stdout, r.stdout + r.stderr)
     r = bare("start")
     check("start with the record", r.returncode == 0 and "bridge ready" in r.stdout, r.stdout + r.stderr)
     r = bare("job", "start", "--", "status")
@@ -82,6 +89,7 @@ try:
     if jid.startswith("j-"):
         log = job_log(jid)
         check("the job ran inkos status in the recorded project", f"fake-inkos cwd={novel.resolve()} args=status" in log, log)
+        check("the job got INKOS_LOCALE=ko from runtime/locale", "fake-inkos locale=ko\n" in log, log)
         meta = json.loads((JOBS / f"{jid}.json").read_text(encoding="utf-8"))
         check("job record names the recorded project", meta["project"] == str(novel.resolve()), meta)
     r = bare("run", "--", "status")
@@ -91,6 +99,11 @@ try:
     (other / "inkos.json").write_text("{}")
     r = bare("run", "--", "status", extra={"INKOS_AGENT_PROJECT": str(other)})
     check("INKOS_AGENT_PROJECT still comes first", f"fake-inkos cwd={other.resolve()}" in r.stdout, r.stdout + r.stderr)
+    r = bare("run", "--", "status", extra={"INKOS_LOCALE": "en"})
+    check("INKOS_LOCALE in the shell comes first", "fake-inkos locale=en\n" in r.stdout, r.stdout + r.stderr)
+    locale_file.unlink()
+    r = bare("run", "--", "status")
+    check("without runtime/locale nothing is added (CLI falls back to LANG, then zh)", "fake-inkos locale=\n" in r.stdout, r.stdout + r.stderr)
 
     # 2. record absent: the repository root has no inkos.json -> exit 3, no job
     recorded.unlink()

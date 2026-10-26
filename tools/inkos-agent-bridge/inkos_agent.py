@@ -550,9 +550,19 @@ def inkos_cmd() -> list[str]:
     return [binary]
 
 
-# install.sh --project (run by tools/setup-cloud.sh) records the project here, in the
-# git-ignored runtime folder, so commands find it without INKOS_AGENT_PROJECT.
+# install.sh --project/--locale (run by tools/setup-cloud.sh) record the project and the
+# CLI language here, in the git-ignored runtime folder, so commands work without
+# INKOS_AGENT_PROJECT / INKOS_LOCALE in the shell.
 PROJECT_FILE = STATE / "project"
+LOCALE_FILE = STATE / "locale"
+
+
+def recorded_locale() -> str | None:
+    try:
+        value = LOCALE_FILE.read_text(encoding="utf-8").strip()
+    except OSError:
+        return None
+    return value if re.fullmatch(r"[A-Za-z_-]{1,20}", value) else None
 
 
 def project_sources(args) -> list[tuple[str, str | None]]:
@@ -612,6 +622,8 @@ def inkos_env(keep_proxy=False) -> dict:
         "INKOS_LLM_STREAM_IDLE_TIMEOUT_MS": LONG_TIMEOUT_MS,
         "INKOS_LLM_REQUEST_TIMEOUT_MS": LONG_TIMEOUT_MS,
     })
+    if not env.get("INKOS_LOCALE") and recorded_locale():
+        env["INKOS_LOCALE"] = recorded_locale()
     return env
 
 
@@ -701,6 +713,10 @@ def cmd_doctor(args):
     node = shutil.which("node")
     print(f"node         : {subprocess.run(['node', '--version'], capture_output=True, text=True).stdout.strip() if node else 'missing'}")
     print(f"project      : {project} ({'ok' if not missing else 'no inkos.json'}, from {chosen})")
+    if os.environ.get("INKOS_LOCALE"):
+        print(f"locale       : {os.environ['INKOS_LOCALE']} (INKOS_LOCALE)")
+    else:
+        print(f"locale       : {recorded_locale() or 'not set'} ({'from ' + str(LOCALE_FILE) if recorded_locale() else 'CLI falls back to LC_ALL/LANG, then zh'})")
     foreign = foreign_bridge()
     if foreign:
         ok = False

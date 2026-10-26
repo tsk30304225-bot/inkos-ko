@@ -431,3 +431,7 @@ names, scene order, or signature combinations" 원칙을 그대로 지킨다). �
   - InkOS 실행 파일: `INKOS_BIN` → `~/.local/bin/inkos` → PATH(원래는 `~/.local/bin`을 보지 않았다).
   - 문서: ENV_TEST·브리지 AGENTS에 "명령마다 새 셸이 열리는 환경". RUNTIME에 기록 파일과 `INKOS_PNPM_PIN_CMD` 한 줄.
   - 시험(프록시 변수 제거, shim 경유): core 757 / studio 307 / cli 101 = 1,165 통과, 브리지 38/38, 브리지 프로젝트 기록 14/14(새 파일, `env -i`), Drive 51/51, novel-brief 27/27, 설치 스크립트 57/57.
+- 2026-10-26 (`claude/eeum-n0rsol`): **7-f 보완 `(stage 7-f)` — CLI 언어도 기록.** 결정필요 답 (b)(사용자 결정). 근거는 `verification/stage-7f.md` "보완".
+  - `install.sh --locale ko`(setup이 넘김)가 `runtime/locale`에 기록한다. 셸에 `INKOS_LOCALE`이 없으면 브리지가 job에 그 값을 넣는다(셸 값이 먼저, 기록이 없으면 그대로).
+  - 실제 `book backup --list`(환경 언어를 쓰는 명령)로 확인했다: 기록이 없으면 중국어, `ko`면 한국어.
+  - 시험(프록시 변수 제거, shim 경유): core 757 / studio 307 / cli 101 = 1,165 통과, 브리지 38/38, 브리지 프로젝트 기록 19/19, Drive 51/51, novel-brief 27/27, 설치 스크립트 58/58.

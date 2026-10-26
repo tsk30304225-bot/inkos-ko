@@ -55,8 +55,29 @@ rc=3; jobs 파일 수 3 → 3
 ## 남은 점 (보고의 결정필요)
 
 `INKOS_LOCALE=ko`도 같은 export 줄에 있어 새 셸에서는 사라진다. CLI는 `INKOS_LOCALE` → `LC_ALL`/`LC_MESSAGES`/`LANG` → `zh` 순으로 안내 문구 언어를 정한다(`packages/cli/src/localization.ts:50-56`).
-그래서 Codex의 새 셸에서는 CLI 안내 문구가 중국어(또는 LANG에 따른 언어)가 될 수 있다. 원고 언어(작품 설정)와는 별개이고, 고치지 않았다.
+그래서 Codex의 새 셸에서는 CLI 안내 문구가 중국어(또는 LANG에 따른 언어)가 될 수 있다. 원고 언어(작품 설정)와는 별개다.
+7-f 본 커밋(c79b06e)에서는 고치지 않았고, 아래 보완에서 (b)로 처리했다.
+
+## 보완: CLI 언어도 기록 (결정필요 답 (b), 사용자 결정)
+
+- `install.sh --locale ko`(setup이 넘김)가 `runtime/locale`에 `ko`를 쓴다. 값은 영문자·`_`·`-`만 받고, 틀리면 아무것도 쓰기 전에 exit 2로 멈춘다.
+- 브리지는 InkOS를 띄울 때(`run`, `job start`, `start --studio`) 셸에 `INKOS_LOCALE`이 없으면 기록된 값을 넣는다. 셸 값이 먼저다. 기록이 없으면 아무것도 넣지 않는다(zh/en 설치는 그대로).
+  `doctor`는 `locale : ko (from …/runtime/locale)` 줄을 출력한다. 엔진은 그대로다.
+- 실제 InkOS 비교: `book backup <ID> --list`는 일부러 작품 언어가 아니라 환경 언어를 따른다(`commands/book.ts:312-314` 주석). `env -i`(LANG 없음)로 test-6에서 실행했다:
+```
+== runtime/locale 없음
+test-6-murim-나루-객주의-짐표-사환 还没有备份。用 inkos book backup test-6-murim-나루-객주의-짐표-사환 创建一份。
+== runtime/locale = ko
+test-6-murim-나루-객주의-짐표-사환의 백업이 없습니다. 생성 명령: inkos book backup test-6-murim-나루-객주의-짐표-사환
+```
+  환경 언어를 쓰는 곳: `book backup`·`book restore`, `doctor`, `config` 모델 목록(`resolveCliLanguage()` 인자 없음).
+  `write next`, `revise`, `status` 같은 작품 명령은 작품 언어(`book.language`)를 먼저 따르므로 기록이 없어도 한국어다.
+- 시험: 브리지 프로젝트 기록 14 → 19.
+  - 기록 생성, 틀린 값은 exit 2이고 아무것도 쓰지 않음.
+  - `doctor`의 locale 줄, job이 `INKOS_LOCALE=ko`를 받음.
+  - 셸의 `INKOS_LOCALE=en`이 먼저, 기록이 없으면 넣지 않음.
+  - 설치 스크립트 57 → 58(setup이 `ko`를 기록).
 
 ## 시험 수
 
-프록시 변수 제거, shim 경유: core 757 / studio 307 / cli 101 = 1,165 통과. 브리지 38/38, 브리지 프로젝트 기록 14/14(새 파일), Drive 51/51, novel-brief 27/27, 설치 스크립트 57/57.
+프록시 변수 제거, shim 경유: core 757 / studio 307 / cli 101 = 1,165 통과. 브리지 38/38, 브리지 프로젝트 기록 19/19(새 파일), Drive 51/51, novel-brief 27/27, 설치 스크립트 58/58(보완 뒤).

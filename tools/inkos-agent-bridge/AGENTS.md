@@ -24,6 +24,9 @@ folder has no `inkos.json`, `doctor`, `start`, `job start` and `run` exit 3 and 
 where they looked. InkOS itself is `$INKOS_BIN`, else `~/.local/bin/inkos`, else `inkos` on PATH.
 Environments that open a new shell per command (Codex and others) lose exports and
 do not read `~/.bashrc`; since 7-f no export is needed for the project or InkOS.
+The CLI language works the same way: `install.sh --locale ko` (setup passes it)
+records it in `runtime/locale`, and jobs get `INKOS_LOCALE` from it when the shell
+has none (without it the CLI falls back to LC_ALL/LANG, then Chinese).
 Short commands without model calls (`book list`, `status`, `export`) can run in
 the foreground: `inkos-agent run -- book list --json`.
 
