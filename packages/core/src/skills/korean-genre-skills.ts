@@ -18,8 +18,9 @@ export const LIGHT_MURIM_SKILL_ID = "inkos-ko-light-murim";
 export const LIGHT_MURIM_PRESET = "light-murim-comic";
 export const KOREAN_STYLE_PRESET_FILE = "story/korean_style_preset";
 /** Bytes this skill may add to the writer's prompt; above it the writer gets only what the memo chose. */
-// 45KB in the stage-9 directive; 50KB by the user's decision (2026-10-27) after measuring the narrowed writer.
-export const LIGHT_MURIM_WRITER_BYTE_LIMIT = 50 * 1024;
+// 45KB in the stage-9 directive; 60KB by the user's decision (2026-10-27) after measuring the narrowed
+// writer (heaviest memo, three cards and three scene types: 58KB).
+export const LIGHT_MURIM_WRITER_BYTE_LIMIT = 60 * 1024;
 
 const COMBAT = "references/combat-patterns.md";
 const SCENE = "references/scene-patterns.md";

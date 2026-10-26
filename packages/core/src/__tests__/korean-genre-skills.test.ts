@@ -161,11 +161,12 @@ describe("Korean light-murim style skill (preset B)", () => {
         reviser: bytes(skillBlock(await promptFor(root, "reviser"))),
       };
       console.log("light-murim bytes per worker", JSON.stringify(sizes));
-      expect(LIGHT_MURIM_WRITER_BYTE_LIMIT).toBe(50 * 1024);
-      for (const key of ["writerCombat", "writerDaily"] as const) {
+      expect(LIGHT_MURIM_WRITER_BYTE_LIMIT).toBe(60 * 1024);
+      for (const key of ["writerCombat", "writerDaily", "writerHeavy"] as const) {
         expect(sizes[key], key).toBeLessThanOrEqual(LIGHT_MURIM_WRITER_BYTE_LIMIT);
       }
-      // Fixed sizes (2026-10-27). The heaviest memo is over the writer limit; this is reported, not hidden.
+      // Fixed sizes (2026-10-27).
+      expect(sizes.writerCombat).toBeLessThanOrEqual(48 * 1024);
       expect(sizes.writerHeavy).toBeLessThanOrEqual(59 * 1024);
       expect(sizes.planner).toBeLessThanOrEqual(42 * 1024);
       expect(sizes.auditor).toBeLessThanOrEqual(22 * 1024);

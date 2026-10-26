@@ -82,7 +82,7 @@ inkos-agent wait --job $JOB --timeout 90     # 브리지 1.2: 항상 exit 0, 첫
      이때 브리프(`story/brief.md`, `book create --brief`가 옮긴 것)의 문체가 "경쾌한 코믹 라이트 무협"이고 장르가 라이트 무협이면
      `works/<ID>/source/story/korean_style_preset`에 `light-murim-comic`을 쓰고 "정해짐: 문체 프리셋: light-murim-comic"을 출력한다.
      이 파일이 있는 ko 라이트 무협 작품에만 `inkos-ko-light-murim` 문체 스킬이 붙는다(planner·writer·continuity-auditor·reviser, 작업자마다 정해진 절).
-     planner는 memo에 `장면 유형: …`과 전투 회차의 `전투 패턴: C? → C?`을 적고, writer는 그 카드·장면만 받는다(상한 50KB). 나중에 끄려면 이 파일을 지운다.
+     planner는 memo에 `장면 유형: …`과 전투 회차의 `전투 패턴: C? → C?`을 적고, writer는 그 카드·장면만 받는다(상한 60KB). 나중에 끄려면 이 파일을 지운다.
   3. 매 회차 전: `novel-brief.py next works/<ID>` → 다음 화 브리핑(직전 화 요약, 열린 복선, 권 지도상 다음 박자, 정해진 작가 선택,
      전개 선택지 — "계획대로 진행"과 "직접 지시" 포함). 답은 `novel-brief.py direct works/<ID> --choice K -o <파일>`(또는 `--text "작가의 말"`)로
      `--context` 원문을 만들고, `inkos write next <ID> --context-file <파일>`로 넘긴다. `direct`는 같은 원문을 `author_directions.md`의 "N화" 항목에 그대로 덧붙인다.
