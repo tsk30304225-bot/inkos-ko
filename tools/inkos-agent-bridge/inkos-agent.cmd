@@ -1,0 +1,8 @@
+@echo off
+where py >nul 2>nul
+if %errorlevel%==0 (
+  py -3 "%~dp0inkos_agent.py" %*
+) else (
+  python "%~dp0inkos_agent.py" %*
+)
+exit /b %errorlevel%

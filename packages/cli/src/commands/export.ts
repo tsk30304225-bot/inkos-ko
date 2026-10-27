@@ -1,5 +1,5 @@
 import { Command } from "commander";
-import { StateManager, writeExportArtifact, ChapterExportSourceError } from "@actalk/inkos-core";
+import { formatLengthCount, resolveLengthCountingMode, StateManager, writeExportArtifact, ChapterExportSourceError } from "@actalk/inkos-core";
 import { join } from "node:path";
 import { findProjectRoot, resolveBookId, log, logError } from "../utils.js";
 
@@ -29,8 +29,15 @@ export const exportCommand = new Command("export")
           outputPath: result.outputPath,
         }, null, 2));
       } else {
-        log(`Exported ${result.chaptersExported} chapters (${result.totalWords} words)`);
-        log(`Output: ${result.outputPath}`);
+        const book = await state.loadBookConfig(bookId);
+        if (book.language === "ko") {
+          const length = formatLengthCount(result.totalWords, resolveLengthCountingMode("ko"));
+          log(`${result.chaptersExported}개 회차를 내보냈습니다(${length}).`);
+          log(`저장 위치: ${result.outputPath}`);
+        } else {
+          log(`Exported ${result.chaptersExported} chapters (${result.totalWords} words)`);
+          log(`Output: ${result.outputPath}`);
+        }
       }
     } catch (e) {
       if (opts.json) {

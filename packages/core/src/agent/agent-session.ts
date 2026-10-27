@@ -358,7 +358,7 @@ function agentCacheKey(projectRoot: string, sessionId: string): string {
 
 function buildAttachmentUserBlock(attachments: ReadonlyArray<AgentSessionAttachment> | undefined, language: string): string {
   if (!attachments?.length) return "";
-  const isEn = language === "en";
+  const isEn = language !== "zh";
   const lines = [
     isEn
       ? "\n\n## Uploaded Files (host-provided, user-authorized)"
@@ -1326,7 +1326,7 @@ async function runAgentSessionUnlocked(
         ? { sourceToolAssistantUuid: lastAssistantUuid }
         : {}),
       ...(role === "user" && config.attachments?.length ? { display: { userInput: {
-        text: userMessage, language: language === "en" ? "en" as const : "zh" as const,
+        text: userMessage, language: language === "ko" ? "ko" as const : language !== "zh" ? "en" as const : "zh" as const,
         attachments: config.attachments.map(attachment => ({ filename: attachment.filename })),
       } } } : {}),
       message: persistedMessage,

@@ -2,6 +2,7 @@ import { BaseAgent } from "./base.js";
 import { completeLongForm } from "../llm/long-form-completion.js";
 import { materializeStoryGraph } from "../interactive-film/generate.js";
 import { InteractiveFilmPackageToolSchema, StoryboardPackageToolSchema } from "./production-document-tool.js";
+import { KOREAN_SCRIPT_HEADINGS, buildKoreanScriptSystemPrompt, buildKoreanScriptUserPrompt, renderKoreanScriptSpec } from "./korean-script.js";
 
 export type ScriptTargetFormat = string;
 
@@ -14,7 +15,7 @@ export interface ScriptCreationInput {
   readonly requirements?: string;
   readonly episodeCount?: number;
   readonly episodeDuration?: string;
-  readonly language?: "zh" | "en";
+  readonly language?: "zh" | "en" | "ko";
 }
 
 export interface StoryboardCreationInput {
@@ -27,7 +28,7 @@ export interface StoryboardCreationInput {
   readonly aspectRatio?: string;
   readonly granularity?: string;
   readonly maxShots?: number;
-  readonly language?: "zh" | "en";
+  readonly language?: "zh" | "en" | "ko";
 }
 
 export interface InteractiveFilmCreationInput {
@@ -41,7 +42,7 @@ export interface InteractiveFilmCreationInput {
   readonly episodeDuration?: string;
   readonly budget?: string;
   readonly referenceMode?: string;
-  readonly language?: "zh" | "en";
+  readonly language?: "zh" | "en" | "ko";
 }
 
 export class ScriptCreationAgent extends BaseAgent {
@@ -51,13 +52,13 @@ export class ScriptCreationAgent extends BaseAgent {
 
   private async recoverProductionMarkdown(
     fragments: string,
-    language: "zh" | "en",
+    language: "zh" | "en" | "ko",
     requiredHeadings: readonly string[],
   ): Promise<string> {
     const response = await this.chat([
       {
         role: "system",
-        content: language === "en"
+        content: language !== "zh"
           ? [
               "You recover one canonical production document after a transport-confirmed output-limit continuation.",
               "The fragments may contain scratch analysis, overlapping suffixes, and complete-document restarts.",
@@ -74,10 +75,10 @@ export class ScriptCreationAgent extends BaseAgent {
       {
         role: "user",
         content: [
-          language === "en" ? "## Required Headings" : "## 必需标题",
+          language !== "zh" ? "## Required Headings" : "## 必需标题",
           ...requiredHeadings.map((heading) => `- ${heading}`),
           "",
-          language === "en" ? "## Output Fragments" : "## 输出片段",
+          language !== "zh" ? "## Output Fragments" : "## 输出片段",
           fragments,
         ].join("\n"),
       },
@@ -104,7 +105,7 @@ export class ScriptCreationAgent extends BaseAgent {
       recoverAfterContinuation: (fragments) => this.recoverProductionMarkdown(
         fragments,
         language,
-        language === "en" ? ["## Characters", "## Script"] : ["## 人物", "## 剧本正文"],
+        language === "ko" ? KOREAN_SCRIPT_HEADINGS : language !== "zh" ? ["## Characters", "## Script"] : ["## 人物", "## 剧本正文"],
       ),
     });
     return response.content.trim();
@@ -168,8 +169,8 @@ export class InteractiveFilmCreationAgent extends BaseAgent {
   }
 }
 
-function productionBrief(input: {authorRequest?: string; requirements?: string}, language: "zh" | "en") {
-  const en = language === "en";
+function productionBrief(input: {authorRequest?: string; requirements?: string}, language: "zh" | "en" | "ko") {
+  const en = language !== "zh";
   return [
     ...(input.authorRequest?.trim() ? [en ? "## Author request" : "## 作者原始请求", input.authorRequest, ""] : []),
     en ? "## Production brief" : "## 创作任务与方案",
@@ -180,6 +181,7 @@ function productionBrief(input: {authorRequest?: string; requirements?: string},
 }
 
 export function renderScriptSpec(input: ScriptCreationInput): string {
+  if (input.language === "ko") return renderKoreanScriptSpec(input);
   if ((input.language ?? "zh") === "en") {
     return [
       `# ${input.title} Script Creation Spec`,
@@ -305,8 +307,9 @@ export function renderInteractiveFilmSpec(input: InteractiveFilmCreationInput): 
 }
 
 
-function buildScriptCreationSystemPrompt(language: "zh" | "en" = "zh"): string {
-  if (language === "en") {
+function buildScriptCreationSystemPrompt(language: "zh" | "en" | "ko" = "zh"): string {
+  if (language === "ko") return buildKoreanScriptSystemPrompt();
+  if (language !== "zh") {
     return [
       "Produce the confirmed script artifact with the activated script-writing Skill.",
       "The deliverable must include the exact Markdown headings `## Characters` and `## Script`, followed by a complete performable script rather than a proposal or outline.",
@@ -320,8 +323,9 @@ function buildScriptCreationSystemPrompt(language: "zh" | "en" = "zh"): string {
   ].join("\n");
 }
 
-function buildScriptCreationUserPrompt(input: ScriptCreationInput, language: "zh" | "en" = "zh"): string {
-  if (language === "en") {
+function buildScriptCreationUserPrompt(input: ScriptCreationInput, language: "zh" | "en" | "ko" = "zh"): string {
+  if (language === "ko") return buildKoreanScriptUserPrompt(input);
+  if (language !== "zh") {
     return [
       "## Creation Spec",
       renderScriptSpec(input),
@@ -358,8 +362,8 @@ function buildScriptCreationUserPrompt(input: ScriptCreationInput, language: "zh
   ].join("\n");
 }
 
-function buildStoryboardCreationSystemPrompt(language: "zh" | "en" = "zh"): string {
-  if (language === "en") {
+function buildStoryboardCreationSystemPrompt(language: "zh" | "en" | "ko" = "zh"): string {
+  if (language !== "zh") {
     return [
       "Execute the confirmed visual spec with the activated storyboard Skill; unconfirmed choices remain adjustable.",
       "Submit the complete human-readable storyboard and its image prompts together through the result tool. No model self-narration or process explanation.",
@@ -371,11 +375,11 @@ function buildStoryboardCreationSystemPrompt(language: "zh" | "en" = "zh"): stri
   ].join("\n");
 }
 
-function buildStoryboardCreationUserPrompt(input: StoryboardCreationInput, language: "zh" | "en" = "zh"): string {
+function buildStoryboardCreationUserPrompt(input: StoryboardCreationInput, language: "zh" | "en" | "ko" = "zh"): string {
   const maxShotsRule = input.maxShots
-    ? (language === "en" ? `Do not exceed ${input.maxShots} shots.` : `镜头总数不得超过 ${input.maxShots}。`)
+    ? (language !== "zh" ? `Do not exceed ${input.maxShots} shots.` : `镜头总数不得超过 ${input.maxShots}。`)
     : "";
-  if (language === "en") {
+  if (language !== "zh") {
     return [
       "## Storyboard Spec",
       renderStoryboardSpec(input),
@@ -412,8 +416,8 @@ function buildStoryboardCreationUserPrompt(input: StoryboardCreationInput, langu
   ].join("\n");
 }
 
-function buildInteractiveFilmCreationSystemPrompt(language: "zh" | "en" = "zh"): string {
-  if (language === "en") {
+function buildInteractiveFilmCreationSystemPrompt(language: "zh" | "en" | "ko" = "zh"): string {
+  if (language !== "zh") {
     return [
       "Execute the confirmed spec with the activated interactive-film Skill; unconfirmed choices remain adjustable.",
       "Submit the complete package through the result tool. storyTree, flags, script, and storyboard are complete human-readable Markdown artifacts; imagePrompts preserve shot order; storyGraph is the playable graph for the same material.",
@@ -427,8 +431,8 @@ function buildInteractiveFilmCreationSystemPrompt(language: "zh" | "en" = "zh"):
   ].join("\n");
 }
 
-function buildInteractiveFilmCreationUserPrompt(input: InteractiveFilmCreationInput, language: "zh" | "en" = "zh"): string {
-  if (language === "en") {
+function buildInteractiveFilmCreationUserPrompt(input: InteractiveFilmCreationInput, language: "zh" | "en" | "ko" = "zh"): string {
+  if (language !== "zh") {
     return [
       "## Interactive Film Spec",
       renderInteractiveFilmSpec(input),
@@ -489,12 +493,12 @@ function buildInteractiveFilmCreationUserPrompt(input: InteractiveFilmCreationIn
   ].join("\n");
 }
 
-function formatScriptTarget(value: ScriptTargetFormat | undefined, language: "zh" | "en" = "zh"): string {
+function formatScriptTarget(value: ScriptTargetFormat | undefined, language: "zh" | "en" | "ko" = "zh"): string {
   const custom = value?.trim();
   if (custom && !["vertical_short_drama", "screenplay", "audio_drama", "interactive_script", "general_script"].includes(custom)) {
     return custom;
   }
-  if (language === "en") {
+  if (language !== "zh") {
     switch (value) {
       case "vertical_short_drama":
         return "vertical short drama";
@@ -524,9 +528,9 @@ function formatScriptTarget(value: ScriptTargetFormat | undefined, language: "zh
   }
 }
 
-function summarizeSourceForSpec(sourceText: string | undefined, language: "zh" | "en" = "zh"): string {
+function summarizeSourceForSpec(sourceText: string | undefined, language: "zh" | "en" | "ko" = "zh"): string {
   const text = sourceText?.replace(/\s+/g, " ").trim();
-  if (language === "en") {
+  if (language !== "zh") {
     if (!text) return "No full source material provided.";
     return `Full source material provided, about ${text.length} characters; the full content will be read during generation.`;
   }

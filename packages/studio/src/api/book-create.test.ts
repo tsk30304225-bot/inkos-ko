@@ -13,6 +13,15 @@ describe("normalizeStudioPlatform", () => {
 });
 
 describe("buildStudioBookConfig", () => {
+  it("keeps Korean language, readable NFC ids and character targets", () => {
+    const title = "한국어 작품";
+    const input = { title: title.normalize("NFD"), genre: "korean-mystery", language: "ko", platform: "other" };
+    const config = buildStudioBookConfig(input, "2026-10-24T00:00:00.000Z");
+    expect(config.id).toBe("한국어-작품");
+    expect(config.language).toBe("ko");
+    expect(config.chapterWordCount).toBe(3000);
+  });
+
   it("preserves supported platform selections from studio create requests", () => {
     const config = buildStudioBookConfig(
       {

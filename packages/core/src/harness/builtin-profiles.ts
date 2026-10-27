@@ -2,6 +2,7 @@ import { readFileSync, readdirSync, lstatSync } from "node:fs";
 import { join } from "node:path";
 import { WorkProfileRegistry } from "./profile-registry.js";
 import { WorkProfileSchema, type WorkProfile } from "./contracts.js";
+import { isKoreanProjectSync, koreanWorkProfiles } from "./korean-profiles.js";
 
 const PROFILE_INPUTS = [
   {
@@ -93,6 +94,7 @@ export function builtInWorkProfiles(): ReadonlyArray<WorkProfile> {
 export function createBuiltInWorkProfileRegistry(projectRoot?: string): WorkProfileRegistry {
   const registry = new WorkProfileRegistry();
   for (const profile of builtInWorkProfiles()) registry.register(profile);
+  if (isKoreanProjectSync(projectRoot)) for (const profile of koreanWorkProfiles()) registry.register(profile);
   if (projectRoot) {
     const directory = join(projectRoot, ".inkos", "profiles");
     let files: string[] = [];

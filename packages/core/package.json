@@ -45,7 +45,8 @@
   "files": [
     "dist",
     "!dist/__tests__",
-    "skills"
+    "skills",
+    "skills-ko"
   ],
   "license": "AGPL-3.0-only",
   "repository": {

@@ -1,4 +1,7 @@
 import { createProfileWorkTools } from "./tools/work-creation.js";
+import { upstreamLanguage } from "../utils/korean-language.js";
+import { EXPLAINER_SCRIPT_PROFILE_ID, isKoreanProjectSync } from "./korean-profiles.js";
+import { createExplainerScriptTool } from "../agent/korean-explainer-tool.js";
 import {existsSync} from "node:fs";
 import { readdir } from "node:fs/promises";
 import {join} from "node:path";
@@ -185,7 +188,7 @@ export function createProductionCapabilityRegistry(
   environment: ProductionCapabilityEnvironment,
 ): CapabilityRegistry {
   const registry = new CapabilityRegistry();
-  const lang = environment.language === "en" ? "en" : "zh";
+  const lang = (environment.language === "ko" ? "ko" : environment.language !== "zh" ? "en" : "zh");
   const profile = createBuiltInWorkProfileRegistry(environment.projectRoot).require(environment.work?.profileId ?? environment.profileId);
   // The same policy governs execution and the offered confirmation action space.
   const allowedProposals = Object.entries(CONFIRMED_CAPABILITY_BINDINGS).flatMap(([intent, binding]) => {
@@ -315,6 +318,12 @@ export function createProductionCapabilityRegistry(
       activeSkills: environment.activeSkills,
     }), environment),
   ]);
+  if (isKoreanProjectSync(environment.projectRoot)) {
+    registerToolCapability(registry, EXPLAINER_SCRIPT_PROFILE_ID, "Explainer video script", scopedProduction(createExplainerScriptTool(environment.pipeline, environment.projectRoot, {
+      defaultSkills: environment.profileSkills?.(EXPLAINER_SCRIPT_PROFILE_ID),
+      activeSkills: environment.activeSkills,
+    }), environment));
+  }
   registerToolCapability(registry, "storyboard", "Storyboard creation", [
     ...scopedProduction(createStoryboardCreationTool(environment.pipeline, environment.projectRoot, {
       actionPayload: environment.confirmedCreation ? environment.actionPayload : undefined,
@@ -338,7 +347,7 @@ export function createProductionCapabilityRegistry(
             ),
           },
         ),
-        language: lang,
+        language: upstreamLanguage(lang),
       }).map((tool) => tool.name==='inspect_story_graph' ? readAction(tool) : writeAction(tool))
     : scopedProduction(createInteractiveFilmCreationTool(environment.pipeline, environment.projectRoot, {
         actionPayload: environment.confirmedCreation ? environment.actionPayload : undefined,

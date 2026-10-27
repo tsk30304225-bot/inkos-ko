@@ -6,6 +6,7 @@ import {
   type LoadConfiguredAgentSkillsInput,
 } from "./external-loader.js";
 import type { AgentSkill } from "./types.js";
+import { koreanSkillsRoot, usesKoreanSkills } from "./korean-skill-root.js";
 
 export interface LoadAvailableAgentSkillsResult {
   readonly skills: ReadonlyArray<AgentSkill>;
@@ -24,15 +25,18 @@ export async function loadBuiltinAgentSkills(
 export async function loadAvailableAgentSkills(
   input: LoadConfiguredAgentSkillsInput,
 ): Promise<LoadAvailableAgentSkillsResult> {
-  const [builtin, configured] = await Promise.all([
+  const [builtin, korean, configured] = await Promise.all([
     loadBuiltinAgentSkills(),
+    usesKoreanSkills(input.projectRoot).then((korean) => korean
+      ? loadBuiltinAgentSkills(koreanSkillsRoot())
+      : { skills: [], diagnostics: [] }),
     loadConfiguredAgentSkills(input),
   ]);
   return {
     // Registry de-duplication is last-write-wins, so project/user skills can
     // intentionally replace an InkOS default with the same AgentSkills id.
-    skills: [...builtin.skills, ...configured.skills],
-    diagnostics: [...builtin.diagnostics, ...configured.diagnostics],
+    skills: [...builtin.skills, ...korean.skills, ...configured.skills],
+    diagnostics: [...builtin.diagnostics, ...korean.diagnostics, ...configured.diagnostics],
   };
 }
 

@@ -40,5 +40,7 @@ export function fetchWithProxy(
   explicitProxyUrl?: string,
   env: ProxyEnv = process.env,
 ): ReturnType<typeof fetch> {
+  const target = new URL(typeof input === "string" ? input : input instanceof URL ? input.href : input.url);
+  if (["127.0.0.1", "localhost", "[::1]"].includes(target.hostname)) return fetch(input, init);
   return fetch(input, buildProxyFetchInit(init, explicitProxyUrl, env));
 }

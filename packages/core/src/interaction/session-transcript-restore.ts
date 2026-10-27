@@ -459,7 +459,7 @@ function messageEventToInteractionMessage(
 
   if (event.role === "user") {
     const input = event.display?.userInput;
-    const content = input ? [input.text, "", input.language === "en" ? "Attachments:" : "附件：",
+    const content = input ? [input.text, "", input.language !== "zh" ? "Attachments:" : "附件：",
       ...input.attachments.map(attachment => `- ${attachment.filename}`)].join("\n") : textFromContent(raw.content);
     return content ? { role: "user", content, timestamp: event.timestamp } : null;
   }

@@ -5,7 +5,7 @@ import { renderHooksProjection } from "../state/state-projections.js";
 export function buildGovernedHookWorkingSet(params: {
   readonly hooks: ReadonlyArray<HookRecord>;
   readonly contextPackage: ContextPackage;
-  readonly language: "zh" | "en";
+  readonly language: "zh" | "en" | "ko";
 }): string {
   if (params.hooks.length === 0) return renderHooksProjection({ hooks: [] }, params.language);
 

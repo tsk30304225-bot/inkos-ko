@@ -1,3 +1,4 @@
+import { parseWritingLanguage } from "../language-options.js";
 import { Command } from "commander";
 import { access, readFile, rm } from "node:fs/promises";
 import { createInterface } from "node:readline";
@@ -33,12 +34,12 @@ bookCommand
   .command("create")
   .description("Create a new book with AI-generated foundation")
   .requiredOption("--title <title>", "Book title")
-  .option("--genre <genre>", "Genre", "xuanhuan")
-  .option("--platform <platform>", "Target platform", "tomato")
+  .option("--genre <genre>", "Genre (default: xuanhuan; Korean books: other — Korean genre guides: light-martial, fantasy, modern-fantasy)")
+  .option("--platform <platform>", "Target platform (default: tomato; Korean books: other)")
   .option("--target-chapters <n>", "Target chapter count", "200")
   .option("--chapter-words <n>", "Words per chapter", "3000")
   .option("--brief <path>", "Path to creative brief file (.md/.txt) — Architect builds from your ideas instead of generating from scratch")
-  .option("--lang <language>", "Writing language: zh (Chinese) or en (English). Defaults from genre.")
+  .option("--lang <language>", "Writing language: ko (한국어), zh (Chinese), en (English). Defaults from project.", parseWritingLanguage)
   .option("--json", "Output JSON")
   .action(async (opts) => {
     try {
@@ -60,12 +61,13 @@ bookCommand
       }
 
       const config = await loadConfig();
+      const koreanBook = (opts.lang ?? config.language) === "ko";
       const now = new Date().toISOString();
       const book: BookConfig = {
         id: bookId,
         title: opts.title,
-        platform: PlatformSchema.parse(opts.platform ?? "other"),
-        genre: opts.genre,
+        platform: PlatformSchema.parse(opts.platform ?? (koreanBook ? "other" : "tomato")),
+        genre: opts.genre ?? (koreanBook ? "other" : "xuanhuan"),
         status: "outlining",
         targetChapters: parseInt(opts.targetChapters, 10),
         chapterWordCount: parseInt(opts.chapterWords, 10),
@@ -145,7 +147,7 @@ bookCommand
   .option("--chapter-words <n>", "Words per chapter")
   .option("--target-chapters <n>", "Target chapter count")
   .option("--status <status>", "Book status (outlining/active/paused/completed)")
-  .option("--lang <language>", "Writing language: zh or en")
+  .option("--lang <language>", "Writing language: ko, zh or en", parseWritingLanguage)
   .option("--json", "Output JSON")
   .action(async (bookIdArg: string | undefined, opts) => {
     try {

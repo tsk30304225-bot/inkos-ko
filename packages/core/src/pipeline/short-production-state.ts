@@ -25,7 +25,7 @@ export const ShortProductionStateSchema = z.object({
     minChapterLength:z.number().int().positive().optional(),
     maxChapterLength:z.number().int().positive().optional(),
     openingHookChars:z.number().int().positive().optional(),
-    language:z.enum(["zh","en"]),
+    language:z.enum(["zh","en","ko"]),
   }).optional(),
   revisionRequest: z.string().optional(),
   reviewScope: z.string().optional(),

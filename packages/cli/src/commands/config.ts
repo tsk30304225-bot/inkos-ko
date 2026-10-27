@@ -1,3 +1,4 @@
+import { parseWritingLanguage } from "../language-options.js";
 import { Command } from "commander";
 import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { join } from "node:path";
@@ -24,6 +25,7 @@ configCommand
       const keys = key.split(".");
 
       const KNOWN_KEYS = new Set([
+        "language",
         "llm.provider", "llm.baseUrl", "llm.model", "llm.temperature",
         "llm.thinkingBudget", "llm.proxyUrl", "llm.apiFormat", "llm.stream",
         "daemon.schedule.radarCron", "daemon.schedule.writeCron",
@@ -57,6 +59,7 @@ configCommand
         process.exit(1);
       }
 
+      if (key === "language") value = parseWritingLanguage(value);
       let target = config;
       for (let i = 0; i < keys.length - 1; i++) {
         const k = keys[i]!;
@@ -96,7 +99,7 @@ configCommand
   .option("--max-tokens <n>", "Max output tokens")
   .option("--thinking-budget <n>", "Anthropic thinking budget")
   .option("--api-format <format>", "API format (chat / responses)")
-  .option("--lang <language>", "Default writing language: zh (Chinese) or en (English)")
+  .option("--lang <language>", "Default writing language: ko (한국어), zh (Chinese), en (English)", parseWritingLanguage)
   .action(async (opts) => {
     try {
       await mkdir(GLOBAL_CONFIG_DIR, { recursive: true });

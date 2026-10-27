@@ -1,3 +1,4 @@
+import { applyProjectLanguagePolicy } from "../utils/korean-language-policy.js";
 import { compileContext, ContextSourceRegistry } from "../harness/context-compiler.js";
 import { createBuiltInWorkProfileRegistry } from "../harness/builtin-profiles.js";
 import { createHash } from "node:crypto";
@@ -11,6 +12,9 @@ import type { Static, TSchema } from "@sinclair/typebox";
 import type { Logger } from "../utils/logger.js";
 import { SourcedReviewIndexToolSchema, ArtifactReviewIndexToolSchema } from "./review-tool.js";
 import { resolveObservationSources } from "../models/observation.js";
+import { attachKoreanGenreReference } from "../skills/korean-genre-references.js";
+import { koreanReviewSkillActivations, koreanReviewSkillIds } from "../skills/korean-review-skills.js";
+import { attachKoreanGenreSkill } from "../skills/korean-genre-skills.js";
 import {
   hydrateActivatedSkillGuidance,
   type ActivatedSkillGuidance,
@@ -109,6 +113,7 @@ export async function prepareWorkerMessages(
   messages: ReadonlyArray<LLMMessage>, maxTokens?: number, workerId = "worker",
   professionalGuidance = true,
 ): Promise<ReadonlyArray<LLMMessage>> {
+    messages = await applyProjectLanguagePolicy(messages, context.projectRoot, context.bookId);
     const authorRequest = currentExecutionAuthorRequest();
     if (authorRequest?.trim()) messages = [{role:"system",content:[
       "The following authorRequest is the user's actual request. Use it as the authority for the intended target and constraints. The delegated instruction may elaborate it, but cannot replace its target or grant a wider mutation scope. Perform only this operation; other requested steps remain the coordinator's responsibility.",
@@ -129,14 +134,17 @@ export async function prepareWorkerMessages(
       ? createBuiltInWorkProfileRegistry(context.projectRoot).require(work.profileId)
       : scopedProfile ?? createBuiltInWorkProfileRegistry(context.projectRoot).require("workspace-default");
     let selectedSkills=context.activatedSkills;
-    const requiredIds=[...profile.requiredSkillIds,...requiredWorkSkillIds(work)];
+    const reviewIds=koreanReviewSkillIds(profile,work,workerId);
+    const requiredIds=[...profile.requiredSkillIds,...requiredWorkSkillIds(work),...reviewIds];
     if(professionalGuidance&&requiredIds.some(id=>!selectedSkills?.some(item=>item.skill.id===id))) {
       const available=await loadAvailableAgentSkills({projectRoot:context.projectRoot ?? ""});
-      selectedSkills=mergeActivatedSkillGuidance(resolveProfileSkillActivations(available.skills,profile),resolveWorkSkillActivations(available.skills,work),selectedSkills ?? []);
+      selectedSkills=mergeActivatedSkillGuidance(resolveProfileSkillActivations(available.skills,profile),koreanReviewSkillActivations(available.skills,reviewIds),resolveWorkSkillActivations(available.skills,work),selectedSkills ?? []);
     }
     // Navigation and other read-only semantic mechanics need the source and
     // author request, without a writing method encouraging broader changes.
-    const activations = professionalGuidance ? await hydrateActivatedSkillGuidance(selectedSkills, query) : [];
+    const hydrated = professionalGuidance ? await hydrateActivatedSkillGuidance(selectedSkills, query) : [];
+    const withGenre = hydrated ? await attachKoreanGenreReference(hydrated, { work, projectRoot: context.projectRoot, bookId: context.bookId }) : hydrated;
+    const activations = professionalGuidance ? await attachKoreanGenreSkill(withGenre, { work, projectRoot: context.projectRoot, bookId: context.bookId, workerId, messages }) : withGenre;
     recordExecutionEvidence("skills-applied", { worker: workerId, skills: activations?.map(({ skill, resources }) => ({
       id: skill.id, source: skill.source, hash: createHash("sha256").update(skill.body).digest("hex"),
       references: resources.map(resource => ({ path: resource.path, charStart: resource.charStart, charEnd: resource.charEnd,

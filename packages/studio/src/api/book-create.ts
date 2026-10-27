@@ -24,7 +24,7 @@ export interface StudioBookConfigDraft {
   readonly chapterWordCount: number;
   readonly minChapterLength?: number;
   readonly maxChapterLength?: number;
-  readonly language: "zh" | "en";
+  readonly language: "zh" | "en" | "ko";
   readonly createdAt: string;
   readonly updatedAt: string;
 }
@@ -36,8 +36,9 @@ export function normalizeStudioPlatform(platform?: string): Platform {
 export function buildStudioBookConfig(body: StudioCreateBookBody, now: string): StudioBookConfigDraft {
   return {
     id: body.title
+      .normalize("NFC")
       .toLowerCase()
-      .replace(/[^a-z0-9\u4e00-\u9fff]/g, "-")
+      .replace(/[^a-z0-9\u4e00-\u9fff\uac00-\ud7a3]/g, "-")
       .replace(/-+/g, "-")
       .slice(0, 30),
     title: body.title,
@@ -45,10 +46,10 @@ export function buildStudioBookConfig(body: StudioCreateBookBody, now: string): 
     genre: body.genre,
     status: "outlining",
     targetChapters: body.targetChapters ?? 200,
-    chapterWordCount: body.chapterWordCount ?? defaultChapterLength(body.language === "en" ? "en" : "zh"),
+    chapterWordCount: body.chapterWordCount ?? defaultChapterLength(body.language === "ko" ? "ko" : body.language === "en" ? "en" : "zh"),
     ...(body.minChapterLength!==undefined?{minChapterLength:body.minChapterLength}:{}),
     ...(body.maxChapterLength!==undefined?{maxChapterLength:body.maxChapterLength}:{}),
-    language: body.language === "en" ? "en" : "zh",
+    language: body.language === "ko" ? "ko" : body.language === "en" ? "en" : "zh",
     createdAt: now,
     updatedAt: now,
   };

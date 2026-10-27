@@ -11,8 +11,7 @@ import { basename, dirname, join, isAbsolute, relative } from "node:path";
 import type { AgentContext } from "../agents/base.js";
 import {
   SHORT_FICTION_DEFAULT_CHAPTERS,
-  SHORT_FICTION_DEFAULT_CHARS_PER_CHAPTER,
-  SHORT_FICTION_EN_DEFAULT_WORDS_PER_CHAPTER,
+  shortFictionDefaultChapterLength,
   ShortFictionDraftReviewerAgent,
   ShortFictionOutlineAgent,
   ShortFictionPackagingAgent,
@@ -64,7 +63,7 @@ function shortDraftMinimum(options: ShortFictionRunOptions) {
   const identity={title:options.title,openingHookChars:options.openingHookChars};
   if (ratio === undefined) return { ...identity,language, minChapterLength: options.minChapterLength??1, maxChapterLength: options.maxChapterLength };
   if (!(ratio > 0 && ratio <= 1)) throw new Error("minChapterLengthRatio must be greater than 0 and at most 1");
-  const target = options.charsPerChapter ?? (language === "en" ? SHORT_FICTION_EN_DEFAULT_WORDS_PER_CHAPTER : SHORT_FICTION_DEFAULT_CHARS_PER_CHAPTER);
+  const target = options.charsPerChapter ?? shortFictionDefaultChapterLength(language);
   return { ...identity,language, minChapterLength: options.minChapterLength??Math.max(1, Math.ceil(target * ratio)), maxChapterLength: options.maxChapterLength };
 }
 
@@ -321,9 +320,7 @@ async function produceShort(
   const language = options.language ?? "zh";
   let minimum = shortDraftMinimum(options);
   const chapterCount = positiveInteger(options.chapterCount, SHORT_FICTION_DEFAULT_CHAPTERS, "chapterCount");
-  const charsPerChapter = language === "en"
-    ? positiveInteger(options.charsPerChapter, SHORT_FICTION_EN_DEFAULT_WORDS_PER_CHAPTER, "charsPerChapter")
-    : positiveInteger(options.charsPerChapter, SHORT_FICTION_DEFAULT_CHARS_PER_CHAPTER, "charsPerChapter");
+  const charsPerChapter = positiveInteger(options.charsPerChapter, shortFictionDefaultChapterLength(language), "charsPerChapter");
 
   // Resume the current outline from disk when this Work already exists.
   const resumedOutline = providedStoryId
@@ -419,7 +416,7 @@ async function produceShort(
       await writeDraftArtifacts(root, baseDir, "v001-partial", draft, language);
       await syncWorkSourceArtifacts({ projectRoot: root, workId: storyId, accept: false });
       const saved=draft.chapters.filter(chapter=>chapter.title.trim()&&chapter.content.trim()).length;
-      options.onProgress?.(language==='en'
+      options.onProgress?.(language!=='zh'
         ? `Saved ${saved} candidate chapters; ${completedChapterNumbers.length} currently meet the text and length requirements.`
         : `已保存 ${saved} 章候选正文，${completedChapterNumbers.length} 章已满足篇幅与文本要求。`);
     };
@@ -511,7 +508,7 @@ async function produceShort(
     } catch (error) {
       options.signal?.throwIfAborted();
       draftReviewWarning = error instanceof Error ? error.message : String(error);
-      await writeText(root, join(baseDir, "reviews", "draft-warning.md"), language === "en"
+      await writeText(root, join(baseDir, "reviews", "draft-warning.md"), language !== "zh"
         ? `# Review unavailable\n\nThe complete draft remains available.\n\n## Reason\n\n${draftReviewWarning}`
         : `# 审稿暂不可用\n\n完整正文已经保留。\n\n## 原因\n\n${draftReviewWarning}`);
     }
@@ -535,7 +532,7 @@ async function produceShort(
       const reviewHash=shortInputHash(productionState.delivery);
       const savedPackage = await tryReadProjectText(root, join(baseDir, "final", "sales-package.json"));
       const packageDirection=stopAfter==="package"&&options.direction.trim()&&options.direction!==productionState.intent
-        ? [productionState.intent,language==="en"?"Current packaging request:":"本次包装要求：",options.direction].join("\n\n")
+        ? [productionState.intent,language!=="zh"?"Current packaging request:":"本次包装要求：",options.direction].join("\n\n")
         : productionState.intent;
       salesPackage = cachedPackage?.status === "completed" && cachedPackage.inputHash === inputHash && cachedPackage.reviewHash===reviewHash && savedPackage && !options.retryStages?.includes("package")
         ? JSON.parse(savedPackage) as ShortFictionSalesPackage
@@ -551,7 +548,7 @@ async function produceShort(
     } catch (error) {
       options.signal?.throwIfAborted();
       packageWarning = error instanceof Error ? error.message : String(error);
-      await writeText(root, join(baseDir, "reviews", "package-warning.md"), language === "en"
+      await writeText(root, join(baseDir, "reviews", "package-warning.md"), language !== "zh"
         ? `# Packaging requires retry\n\nThe complete story remains available. Synopsis and cover packaging failed without invalidating the prose.\n\n## Reason\n\n${packageWarning}`
         : `# 包装阶段需要重试\n\n完整正文已经保留。简介与封面包装失败不会再把正文标成失败。\n\n## 原因\n\n${packageWarning}`);
     }
@@ -639,7 +636,7 @@ async function reviseShortFictionWithLock(options: ShortFictionRunOptions & { re
     recovery:{action:"short-fiction__draft_short_fiction",parameters:{workId:work.id},
       reason:"The saved draft checkpoint is not an accepted manuscript. Complete and repair it through the draft stage while preserving the existing Work contract."},
   });
-  const language = work.language === "en" ? "en" : "zh";
+  const language = (work.language === "ko" ? "ko" : work.language !== "zh" ? "en" : "zh");
   const state=await readShortProductionState(options.projectRoot,base);
   const checkpointPath = join(".inkos", "short-revisions", `${work.id}.json`);
   const savedText = await tryReadProjectText(options.projectRoot, checkpointPath);
@@ -726,7 +723,7 @@ async function reviseShortFictionWithLock(options: ShortFictionRunOptions & { re
   ] });
   const revised = checkpoint.finalization?.result ?? await new ShortFictionWriterAgent(options.runtimes.writer).reviseDraft({
     direction:options.direction,language,chapterCount,
-    charsPerChapter: revisionOptions.charsPerChapter ?? (language==="en"?SHORT_FICTION_EN_DEFAULT_WORDS_PER_CHAPTER:SHORT_FICTION_DEFAULT_CHARS_PER_CHAPTER),
+    charsPerChapter: revisionOptions.charsPerChapter ?? shortFictionDefaultChapterLength(language),
     minChapterLength:minimum.minChapterLength,maxChapterLength:minimum.maxChapterLength,openingHookChars:minimum.openingHookChars,draft,chapterNumbers,
     outlineMarkdown,review,resume,
     onRevisionProgress:async(progress)=>{
@@ -782,19 +779,19 @@ function renderShortFictionReview(
         ...(observation.evidence.length > 0
           ? [
               "",
-              language === "en" ? "Evidence:" : "证据：",
+              language !== "zh" ? "Evidence:" : "证据：",
               ...observation.evidence.map((item) => `- ${item}`),
             ]
           : []),
         "",
       ])
-    : [language === "en" ? "No evidence-backed observations." : "没有有证据的审稿观察。"];
+    : [language !== "zh" ? "No evidence-backed observations." : "没有有证据的审稿观察。"];
   return [
-    language === "en" ? "# Draft review" : "# 成稿审查",
+    language !== "zh" ? "# Draft review" : "# 成稿审查",
     "",
     review.summary,
     "",
-    language === "en" ? "## Observations" : "## 审稿观察",
+    language !== "zh" ? "## Observations" : "## 审稿观察",
     "",
     ...observations,
   ].join("\n").trim();
@@ -1487,7 +1484,7 @@ function buildCoverImagePrompt(
   };
   return [
     `## Cover request\n\n\`\`\`json\n${JSON.stringify(request, null, 2)}\n\`\`\``,
-    language === "en"
+    language !== "zh"
       ? "Render printedTitle exactly and legibly when present; null means no main title. Do not defer the requested lettering to a later step. authorRequest is the actual request, not copy to print. Any additional lettering must be explicitly requested there. visualBrief proposes the imagery; it cannot authorize extra text. storyReference supplies story context only: do not print its synopsis, selling points, evaluations or labels on the image."
       : "printedTitle 非空时，将其原样、清晰地排入本张图；为空时不呈现主标题，不把已要求的排字推迟到后续步骤。authorRequest 是作者实际要求，本身不是要印出的文案；其他文字只有在其中明确要求印出时才可添加。visualBrief 是画面方案，不能自行授权额外文字。storyReference 只提供故事背景，不能把其中的简介、卖点、评价或字段标签排到图上。",
   ].join("\n\n");

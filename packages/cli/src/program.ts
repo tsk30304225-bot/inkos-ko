@@ -23,6 +23,7 @@ import { analyticsCommand } from "./commands/analytics.js";
 import { importCommand } from "./commands/import.js";
 import { fanficCommand } from "./commands/fanfic.js";
 import { shortCommand } from "./commands/short-fiction.js";
+import { explainerCommand, scriptCommand } from "./commands/korean-script.js";
 import { forecastCommand } from "./commands/forecast.js";
 import { translateCommand } from "./commands/translate.js";
 import { createStudioCommand, launchStudioEntry } from "./commands/studio.js";
@@ -86,6 +87,8 @@ export function createProgram(hooks: ProgramHooks = {}): Command {
   program.addCommand(importCommand);
   program.addCommand(fanficCommand);
   program.addCommand(shortCommand);
+  program.addCommand(scriptCommand);
+  program.addCommand(explainerCommand);
   program.addCommand(forecastCommand);
   program.addCommand(translateCommand);
   program.addCommand(createStudioCommand({

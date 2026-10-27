@@ -310,6 +310,8 @@ export {
   SHORT_FICTION_DEFAULT_CHAPTERS,
   SHORT_FICTION_DEFAULT_CHARS_PER_CHAPTER,
   SHORT_FICTION_EN_DEFAULT_WORDS_PER_CHAPTER,
+  SHORT_FICTION_KO_DEFAULT_CHARS_PER_CHAPTER,
+  shortFictionDefaultChapterLength,
   ShortFictionOutlineAgent,
   ShortFictionWriterAgent,
   ShortFictionDraftReviewerAgent,
@@ -431,7 +433,8 @@ export { StateValidatorAgent } from "./agents/state-validator.js";
 export { createInitialRuntimeState, loadRuntimeStateSnapshot, buildRuntimeStateArtifacts, saveRuntimeStateSnapshot, type RuntimeStateArtifacts } from "./state/runtime-state-store.js";
 export { splitChapters, type SplitChapter } from "./utils/chapter-splitter.js";
 export * from "./translation/index.js";
-export { countChapterLength, resolveLengthCountingMode, formatLengthCount, buildLengthSpec, defaultChapterLength, DEFAULT_CHAPTER_LENGTH_ZH, DEFAULT_CHAPTER_LENGTH_EN, type LengthLanguage } from "./utils/length-metrics.js";
+export { countChapterLength, resolveLengthCountingMode, formatLengthCount, buildLengthSpec, defaultChapterLength, DEFAULT_CHAPTER_LENGTH_ZH, DEFAULT_CHAPTER_LENGTH_EN, DEFAULT_CHAPTER_LENGTH_KO, type LengthLanguage } from "./utils/length-metrics.js";
+export { chapterLabel, normalizeWritingLanguage, pickByLanguage, promptLanguage, upstreamLanguage, type WritingLanguage } from "./utils/korean-language.js";
 export { createLogger, createStderrSink, createJsonLineSink, nullSink, type Logger, type LogSink, type LogLevel, type LogEntry } from "./utils/logger.js";
 export { loadProjectConfig, GLOBAL_CONFIG_DIR, GLOBAL_ENV_PATH, isApiKeyOptionalForEndpoint } from "./utils/config-loader.js";
 export { resolveEffectiveLLMConfig, LLMConfigurationError, type EffectiveLLMConfigResult, type EffectiveLLMDiagnostics, type LLMConfigCliOverrides, type LLMConfigMode, type LLMConsumer, type LLMValueSource } from "./utils/effective-llm-config.js";
@@ -598,3 +601,9 @@ export { runWorkerAgent, type WorkerAgentOptions } from "./agent/worker-agent.js
 export { compileStyleGuide } from "./agents/style-guide.js";
 export { LLM_API_FORMATS, isLLMApiFormat, toPiApi, type LLMApiFormat } from "./llm/api-format.js";
 export * from "./harness/index.js";
+export { createExplainerScriptTool, EXPLAINER_CREATE_TOOL } from "./agent/korean-explainer-tool.js";
+export { runExplainerScriptCreation, renderExplainerSpec, type ExplainerScriptRunOptions, type ExplainerScriptRunResult } from "./pipeline/korean-explainer-runner.js";
+export { checkExplainerScript, explainerTargetRange, renderExplainerCheck, EXPLAINER_COLUMNS, type ExplainerCheckResult } from "./utils/korean-explainer-check.js";
+export { EXPLAINER_SCRIPT_PROFILE_ID, EXPLAINER_SCRIPT_SKILL_ID, koreanWorkProfiles, isKoreanProjectSync } from "./harness/korean-profiles.js";
+export { KOREAN_GENRE_IDS, resolveKoreanGenre } from "./skills/korean-genre-references.js";
+export { KOREAN_SCRIPT_HEADINGS, KOREAN_DEFAULT_SCRIPT_FORMAT } from "./agents/korean-script.js";

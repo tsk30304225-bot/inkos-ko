@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { upstreamLanguage } from "@actalk/inkos-core";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { streamSSE } from "hono/streaming";
@@ -175,14 +176,14 @@ import {
 
 // -- Studio server language (read per request from the project config's `language`) --
 
-type StudioLanguage = "zh" | "en";
+type StudioLanguage = "zh" | "en" | "ko";
 
 function normalizeStudioLanguage(value: unknown): StudioLanguage {
-  return value === "en" ? "en" : "zh";
+  return value === "ko" ? "ko" : value === "en" ? "en" : "zh";
 }
 
 function pick(lang: StudioLanguage, zh: string, en: string): string {
-  return lang === "en" ? en : zh;
+  return lang !== "zh" ? en : zh;
 }
 
 async function resolveStudioProfileSkills(
@@ -1448,7 +1449,7 @@ async function executeConfirmedProductionAction(args: {
     const deps = filmLLMDepsFromClient(agentCtx.client, agentCtx.model, {
       activatedSkills: () => profileSkills("interactive-film"),
     });
-    tool = createDraftStructureTool(args.root, projectId, deps, lang);
+    tool = createDraftStructureTool(args.root, projectId, deps, upstreamLanguage(lang));
     params = {
       instruction: payload?.instruction?.trim() || args.instruction,
     };
@@ -3088,7 +3089,7 @@ export function createStudioServer(initialConfig: ProjectConfig, root: string, o
         state.loadBookConfig(id),
         buildPipelineConfig({ bookIdForSettings: id }),
       ]);
-      const language = book.language === "en" ? "en" : "zh";
+      const language = normalizeStudioLanguage(book.language);
       const requestedBrief = typeof body.brief === "string" ? body.brief.trim() : "";
       const inspirationSkills = await hydrateActivatedSkillGuidance(
         await resolveStudioProfileSkills(root, "longform-novel", { includeRecommended: true }),
@@ -4801,8 +4802,8 @@ export function createStudioServer(initialConfig: ProjectConfig, root: string, o
           else throw new ApiError(404, "BOOK_NOT_FOUND", `Book not found: ${agentBookId}`);
         }
       }
-      const configLanguage = config.language === "en" ? "en" : "zh";
-      const bookLanguage = activeBookConfig?.language === "en" ? "en" : activeBookConfig?.language === "zh" ? "zh" : undefined;
+      const configLanguage = normalizeStudioLanguage(config.language);
+      const bookLanguage = activeBookConfig?.language === "ko" ? "ko" : activeBookConfig?.language === "en" ? "en" : activeBookConfig?.language === "zh" ? "zh" : undefined;
       const requestedLanguage = actionPayload?.shortRun?.language ?? actionPayload?.createBook?.language;
       const surfaceLanguage = agentBookId
         ? (bookLanguage ?? configLanguage)
@@ -5527,7 +5528,8 @@ export function createStudioServer(initialConfig: ProjectConfig, root: string, o
   // --- Language setup ---
 
   app.post("/api/v1/project/language", async (c) => {
-    const { language } = await c.req.json<{ language: "zh" | "en" }>();
+    const { language } = await c.req.json<{ language: "zh" | "en" | "ko" }>();
+    if (!["zh", "en", "ko"].includes(language)) return c.json({ error: "Unsupported language" }, 400);
     const configPath = join(root, "inkos.json");
     try {
       const raw = await readFile(configPath, "utf-8");
@@ -5817,7 +5819,7 @@ export function createStudioServer(initialConfig: ProjectConfig, root: string, o
         ...(updates.chapterWordCount !== undefined ? { chapterWordCount: Number(updates.chapterWordCount) } : {}),
         ...(updates.targetChapters !== undefined ? { targetChapters: Number(updates.targetChapters) } : {}),
         ...(updates.status !== undefined ? { status: updates.status as typeof book.status } : {}),
-        ...(updates.language !== undefined ? { language: updates.language as "zh" | "en" } : {}),
+        ...(updates.language !== undefined ? { language: updates.language as "zh" | "en" | "ko" } : {}),
         updatedAt: new Date().toISOString(),
       };
       await state.saveBookConfig(id, updated);
@@ -5915,7 +5917,7 @@ export function createStudioServer(initialConfig: ProjectConfig, root: string, o
   // --- Style Analyze ---
 
   app.post("/api/v1/style/analyze", async (c) => {
-    const { text, sourceName, language } = await c.req.json<{ text: string; sourceName: string; language?: "zh" | "en" }>();
+    const { text, sourceName, language } = await c.req.json<{ text: string; sourceName: string; language?: "zh" | "en" | "ko" }>();
     if (!text?.trim()) return c.json({ error: "text is required" }, 400);
 
     try {
@@ -6091,7 +6093,7 @@ export function createStudioServer(initialConfig: ProjectConfig, root: string, o
       targetChapters: body.targetChapters ?? 100,
       chapterWordCount: body.chapterWordCount ?? 3000,
       fanficMode: body.mode?.trim() || "canon",
-      ...(body.language ? { language: body.language as "zh" | "en" } : {}),
+      ...(body.language ? { language: body.language as "zh" | "en" | "ko" } : {}),
       createdAt: now,
       updatedAt: now,
     };
@@ -6157,7 +6159,7 @@ export function createStudioServer(initialConfig: ProjectConfig, root: string, o
     } catch {
       return c.json({ error: `Parent book "${body.parentBookId}" not found` }, 404);
     }
-    const language = (body.language ?? parent.language) as "zh" | "en" | undefined;
+    const language = (body.language ?? parent.language) as "zh" | "en" | "ko" | undefined;
     const now = new Date().toISOString();
     const bookConfig = buildStudioBookConfig({
       title: body.title,
@@ -6229,7 +6231,7 @@ export function createStudioServer(initialConfig: ProjectConfig, root: string, o
       platform: body.platform,
       targetChapters: body.targetChapters,
       chapterWordCount: body.chapterWordCount,
-      ...(body.language ? { language: body.language as "zh" | "en" } : {}),
+      ...(body.language ? { language: body.language as "zh" | "en" | "ko" } : {}),
     }, now);
     const bookId = bookConfig.id;
     if (!bookId) {

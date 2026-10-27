@@ -1,4 +1,5 @@
 import { BaseAgent } from "./base.js";
+import { koreanProseAuditBlock } from "./korean-audit-evidence.js";
 import type { ContextPackage } from "../models/input-governance.js";
 import { renderNarrativeSelectedContext } from "../utils/narrative-control.js";
 import { numberReviewSource, type Observation } from "../models/observation.js";
@@ -26,17 +27,17 @@ export class ContinuityAuditor extends BaseAgent {
   }
 
   async auditChapter(
-    _bookDir: string,
+    bookDir: string,
     chapterContent: string,
     chapterNumber: number,
     _genre: string | undefined,
     options: {
-      readonly language: "zh" | "en";
+      readonly language: "zh" | "en" | "ko";
       readonly contextPackage: ContextPackage;
       readonly temperature?: number;
     },
   ): Promise<AuditResult> {
-    const isEnglish = options.language === "en";
+    const isEnglish = options.language !== "zh";
     const systemPrompt = isEnglish
       ? "Audit this chapter against the activated review Skill and supplied governed context. Identify each observation with a code, assessment and exact numbered source lines. Do not estimate length; the host computes it. Return a concise overall summary. An empty observations array is valid."
       : "按已激活的审稿 Skill 和权威上下文审查本章。为每条观察提交代码、判断以及所给编号原文中的确切证据行。不估算字数，字数由宿主计算。提交简短总结，observations 为空是合法结果。";
@@ -72,10 +73,12 @@ export class ContinuityAuditor extends BaseAgent {
       }
     }
     const userPrompt = JSON.stringify({ chapterNumber,comparison, sources: [...sources].map(([sourceId, content]) => ({ sourceId, numberedLines: numberReviewSource(content) })) });
+    const koreanProse = options.language === "ko" ? await koreanProseAuditBlock(bookDir, chapterNumber, chapterContent, primarySourceId) : "";
 
     const { result, usage } = await this.submitSourcedReview(
       [
         { role: "system", content: systemPrompt },
+        ...(koreanProse?[{role:'system' as const,content:koreanProse}]:[]),
         ...(comparison?[{role:'system' as const,content:'Separately check the actual before/current changes against the author-authorized revision region. Classify verified changes outside that region as scope and cite both versions. Classify ordinary content findings as quality and tool/external-operation claims as execution. Missing comparison evidence is unavailable, not a scope violation. A narrow edit request does not narrow a separately requested whole-chapter review.'}]:[]),
         { role: "user", content: userPrompt },
       ],

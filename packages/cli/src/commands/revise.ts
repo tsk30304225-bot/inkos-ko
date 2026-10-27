@@ -16,6 +16,12 @@ import {
   type CliLanguage,
 } from "../localization.js";
 import { sendCommandNotification } from "../notify-helper.js";
+import {
+  formatKoreanEarlierRevisionNotice,
+  formatKoreanReviseFailure,
+  formatKoreanReviseResultLines,
+  formatKoreanReviseStart,
+} from "../korean-cli-text.js";
 
 export const reviseCommand = new Command("revise")
   .description("Revise a chapter from user direction and review observations")
@@ -52,7 +58,12 @@ export const reviseCommand = new Command("revise")
       }));
 
       const mode = opts.mode as ReviseMode;
-      if (!opts.json) log(`Revising "${bookId}"${chapterNumber ? ` chapter ${chapterNumber}` : " (latest)"} [mode: ${mode}]...`);
+      if (!opts.json) log(language === "ko"
+        ? formatKoreanReviseStart(bookId, chapterNumber, mode)
+        : `Revising "${bookId}"${chapterNumber ? ` chapter ${chapterNumber}` : " (latest)"} [mode: ${mode}]...`);
+      const latestChapter = language === "ko"
+        ? Math.max(0, ...(await state.loadChapterIndex(bookId)).map((chapter) => chapter.number))
+        : 0;
 
       const activatedSkills = await resolveCliProfileSkills(root, "longform-novel", { includeRecommended: true });
       const action = await executeExplicitCapabilityTool({
@@ -76,6 +87,9 @@ export const reviseCommand = new Command("revise")
 
       if (opts.json) {
         log(JSON.stringify(result, null, 2));
+      } else if (language === "ko") {
+        for (const line of formatKoreanReviseResultLines(result)) log(line);
+        for (const line of formatKoreanEarlierRevisionNotice(result.chapterNumber, latestChapter, result.changed)) log(line);
       } else {
         log(result.changed
           ? `  Chapter ${result.chapterNumber} revised`
@@ -107,7 +121,7 @@ export const reviseCommand = new Command("revise")
       if (opts.json) {
         log(JSON.stringify({ error: String(e) }));
       } else {
-        logError(`Revise failed: ${e}`);
+        logError(notifyLanguage === "ko" ? formatKoreanReviseFailure(e) : `Revise failed: ${e}`);
       }
       process.exit(1);
     }

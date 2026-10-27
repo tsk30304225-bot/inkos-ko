@@ -1,3 +1,4 @@
+import { parseWritingLanguage } from "../language-options.js";
 import { Command } from "commander";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
@@ -52,7 +53,7 @@ shortCommand
   .requiredOption("--direction <text>", "Story direction, e.g. \"女频短篇 婚姻背叛 证据反杀\" or \"female-lead short: marriage betrayal, evidence payback\"")
   .option("--reference <path>", "Optional reference notes/text")
   .option("--story-id <id>", "Work id for the generated short fiction")
-  .option("--lang <language>", "Writing language: zh or en", "zh")
+  .option("--lang <language>", "Writing language: zh, en or ko (한국어)", parseWritingLanguage, "zh")
   .option("--chapters <n>", "Complete short chapter count", String(SHORT_FICTION_DEFAULT_CHAPTERS))
   .option("--chars <n>", "Per-chapter length: zh characters or en words")
   .option("--min-chapter-length-ratio <ratio>", "Minimum complete chapter length relative to target (0 < ratio <= 1)", "0.5")
@@ -187,8 +188,7 @@ interface ShortRunOptions {
 }
 
 function parseShortFictionLanguage(value: string): ShortFictionLanguage {
-  if (value === "zh" || value === "en") return value;
-  throw new Error("lang must be zh or en.");
+  return parseWritingLanguage(value);
 }
 
 interface ShortRunModels {

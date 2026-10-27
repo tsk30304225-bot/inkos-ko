@@ -54,11 +54,11 @@ export async function processTuiAgentInput(params: {
   );
   const userTimestamp = Date.now();
   const currentBookId = params.activeBookId ?? params.session.activeBookId ?? null;
-  const language = config.language === "en" ? "en" : "zh";
+  const language = config.language === "ko" ? "ko" : config.language === "en" ? "en" : "zh";
   const useWork = params.input.trim().match(/^\/use\s+([^\s]+)$/i)?.[1];
   const selectedWork = useWork ? await loadWorkManifest(params.projectRoot, useWork) : null;
   const localWorkResponse = selectedWork
-    ? (language === "en"
+    ? (language !== "zh"
         ? `Using Work "${selectedWork.title}" (${selectedWork.id}) with profile ${selectedWork.profileId}.`
         : `已切换到 Work「${selectedWork.title}」（${selectedWork.id}），Profile：${selectedWork.profileId}。`)
     : await resolveLocalWorkCommand(params.projectRoot, params.input, language);
@@ -204,14 +204,14 @@ export async function processTuiAgentInput(params: {
 async function resolveLocalWorkCommand(
   projectRoot: string,
   rawInput: string,
-  language: "zh" | "en",
+  language: "zh" | "en" | "ko",
 ): Promise<string | undefined> {
   const input = rawInput.trim();
   if (/^\/works$/i.test(input)) {
     const works = await listWorkManifests(projectRoot);
-    if (works.length === 0) return language === "en" ? "No creative Works found." : "还没有创作 Work。";
+    if (works.length === 0) return language === "ko" ? "생성한 작품이 없습니다." : language !== "zh" ? "No creative Works found." : "还没有创作 Work。";
     return [
-      language === "en" ? "Creative Works:" : "创作 Works：",
+      language === "ko" ? "작품 목록:" : language !== "zh" ? "Creative Works:" : "创作 Works：",
       ...works.map((work) => `- ${work.id} | ${work.profileId} | ${work.title} | ${work.artifacts.length} artifacts`),
     ].join("\n");
   }
@@ -223,9 +223,9 @@ async function resolveLocalWorkCommand(
     const recent = episodes.listEpisodes({ workId: work.id, limit: 10 });
     return [
       `${work.title} (${work.id})`,
-      `${language === "en" ? "Profile" : "类型"}: ${work.profileId}`,
-      `${language === "en" ? "Artifacts" : "生成物"}: ${work.artifacts.length}`,
-      `${language === "en" ? "Recent episodes" : "最近执行"}: ${recent.length}`,
+      `${language === "ko" ? "유형" : language !== "zh" ? "Profile" : "类型"}: ${work.profileId}`,
+      `${language === "ko" ? "결과물" : language !== "zh" ? "Artifacts" : "生成物"}: ${work.artifacts.length}`,
+      `${language === "ko" ? "최근 실행" : language !== "zh" ? "Recent episodes" : "最近执行"}: ${recent.length}`,
       ...recent.map((episode) => `- ${episode.status} | ${episode.startedAt}`),
     ].join("\n");
   } finally {
@@ -237,7 +237,7 @@ export function resolveTuiAgentRoute(
   rawInput: string,
   session: InteractionSession,
   activeBookId: string | null,
-  language: "zh" | "en" = "zh",
+  language: "zh" | "en" | "ko" = "zh",
 ): TuiAgentRoute {
   const input = rawInput.trim();
   const currentKind = session.sessionKind ?? (activeBookId ? "book" : "chat");
@@ -245,7 +245,7 @@ export function resolveTuiAgentRoute(
   if (/^\/confirm$/i.test(input)) {
     const pending = session.pendingProposedAction;
     if (!pending) {
-      return localConfirmationRoute(currentKind, input, language === "en" ? "There is no pending action." : "没有待确认的动作。");
+      return localConfirmationRoute(currentKind, input, language === "ko" ? "확인할 작업이 없습니다." : language !== "zh" ? "There is no pending action." : "没有待确认的动作。");
     }
     const requestedIntent = RequestedIntentSchema.safeParse(pending.action);
     const actionPayload = pending.actionPayload === undefined
@@ -255,7 +255,7 @@ export function resolveTuiAgentRoute(
       return localConfirmationRoute(
         currentKind,
         input,
-        language === "en"
+        language === "ko" ? "이 작업은 더 이상 유효하지 않습니다. 다시 요청해 주세요." : language !== "zh"
           ? "This pending action is no longer valid. Please propose it again."
           : "这条待确认动作已失效，请重新提出需求。",
       );
@@ -278,28 +278,28 @@ export function resolveTuiAgentRoute(
       currentKind,
       input,
       session.pendingProposedAction
-        ? language === "en" ? "Pending action cancelled." : "已取消待确认动作。"
-        : language === "en" ? "There is no pending action." : "没有待确认的动作。",
+        ? language === "ko" ? "대기 중인 작업을 취소했습니다." : language !== "zh" ? "Pending action cancelled." : "已取消待确认动作。"
+        : language === "ko" ? "확인할 작업이 없습니다." : language !== "zh" ? "There is no pending action." : "没有待确认的动作。",
     );
   }
 
   const newMatch = input.match(/^\/new(?:\s+([\s\S]+))?$/i);
   if (newMatch) {
-    return entryRoute("book-create", commandBody(newMatch[1], language === "en"
+    return entryRoute("book-create", commandBody(newMatch[1], language === "ko" ? "새 작품을 만들고 싶습니다. 먼저 방향을 확인해 주세요." : language !== "zh"
       ? "I want to create a new book. Confirm the direction with me first."
       : "我想创建一本新书，请先和我确认方向。"));
   }
 
   const shortMatch = input.match(/^\/short(?:\s+([\s\S]+))?$/i);
   if (shortMatch) {
-    return entryRoute("short", commandBody(shortMatch[1], language === "en"
+    return entryRoute("short", commandBody(shortMatch[1], language === "ko" ? "단편을 만들고 싶습니다. 먼저 방향을 확인해 주세요." : language !== "zh"
       ? "I want to create an InkOS Short. Confirm the direction with me first."
       : "我想做 InkOS Short，请先和我确认方向。"));
   }
 
   const coverMatch = input.match(/^\/cover(?:\s+([\s\S]+))?$/i);
   if (coverMatch) {
-    return entryRoute("short", commandBody(coverMatch[1], language === "en"
+    return entryRoute("short", commandBody(coverMatch[1], language === "ko" ? "표지를 만들거나 다시 만들고 싶습니다. 먼저 대상을 확인해 주세요." : language !== "zh"
       ? "I want to create or redo a cover. Confirm the target with me first."
       : "我想生成或重做封面，请先和我确认目标。"));
   }
@@ -308,7 +308,7 @@ export function resolveTuiAgentRoute(
   if (playMatch) {
     const playMode = playMatch[1]?.toLowerCase() as PlayMode | undefined;
     return {
-      ...entryRoute("play", commandBody(playMatch[2], language === "en"
+      ...entryRoute("play", commandBody(playMatch[2], language === "ko" ? "상호작용 세계를 시작하고 싶습니다. 먼저 도입부를 확인해 주세요." : language !== "zh"
         ? "I want to start an interactive world. Confirm the opening with me first."
         : "我想启动互动世界，请先和我确认开局。")),
       ...(playMode ? { playMode } : {}),
@@ -317,7 +317,7 @@ export function resolveTuiAgentRoute(
 
   if (/^\/write$/i.test(input)) {
     return {
-      userMessage: language === "en" ? "Write the next chapter" : "写下一章",
+      userMessage: language === "ko" ? "다음 회차를 집필해 주세요" : language !== "zh" ? "Write the next chapter" : "写下一章",
       sessionKind: activeBookId ? "book" : currentKind,
       actionSource: "slash",
       requestedIntent: "write_next",
@@ -393,8 +393,10 @@ function extractProposedAction(messages: ReadonlyArray<unknown>): PendingPropose
   return undefined;
 }
 
-function formatProposedAction(action: PendingProposedAction, language: "zh" | "en"): string {
-  return language === "en"
+function formatProposedAction(action: PendingProposedAction, language: "zh" | "en" | "ko"): string {
+  return language === "ko"
+    ? [action.title ?? "작업 확인", action.summary ?? "확인하면 계속합니다.", "", action.instruction, "", "계속하려면 /confirm, 취소하려면 /cancel을 입력하세요."].join("\n")
+    : language !== "zh"
     ? [action.title ?? "Confirm action", action.summary ?? "Confirm to continue.", "", action.instruction, "", "Type /confirm to continue, or /cancel to cancel."].join("\n")
     : [action.title ?? "确认执行", action.summary ?? "确认后继续执行。", "", action.instruction, "", "输入 /confirm 继续，或 /cancel 取消。"].join("\n");
 }

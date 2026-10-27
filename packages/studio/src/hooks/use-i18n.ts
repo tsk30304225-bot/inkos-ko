@@ -1,6 +1,8 @@
+import { koreanStrings } from "../lib/korean-strings";
+import { normalizeAppLanguage } from "../lib/app-language";
 import { useApi } from "./use-api";
 
-type Lang = "zh" | "en";
+type Lang = "zh" | "en" | "ko";
 
 const strings = {
   // Header
@@ -374,11 +376,15 @@ export type TFunction = (key: StringKey) => string;
 
 export function useI18n() {
   const { data } = useApi<{ language: string }>("/project");
-  const lang: Lang = data?.language === "en" ? "en" : "zh";
+  const lang: Lang = normalizeAppLanguage(data?.language);
 
   function t(key: StringKey): string {
-    return strings[key][lang];
+    return lang === "ko" ? (koreanStrings[key] ?? strings[key].en) : strings[key][lang];
   }
 
   return { t, lang };
+}
+
+export function translateStudioString(key: StringKey, lang: Lang): string {
+  return lang === "ko" ? (koreanStrings[key] ?? strings[key].en) : strings[key][lang];
 }

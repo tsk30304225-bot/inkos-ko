@@ -23,6 +23,7 @@ import { createWorkManifest, loadWorkManifest, saveWorkManifest } from "../harne
 import { readArtifactRevision } from "../harness/artifact-reader.js";
 import { createBuiltInWorkProfileRegistry } from '../harness/builtin-profiles.js';
 import { currentExecutionAuthorRequest } from '../harness/execution-evidence.js';
+import { extractKoreanScriptReferences } from "../agents/korean-script.js";
 
 export interface ScriptCreationRunOptions {
   readonly projectRoot: string;
@@ -36,7 +37,7 @@ export interface ScriptCreationRunOptions {
   readonly requirements?: string;
   readonly episodeCount?: number;
   readonly episodeDuration?: string;
-  readonly language?: "zh" | "en";
+  readonly language?: "zh" | "en" | "ko";
   readonly projectId?: string;
   readonly onProgress?: (message: string) => void;
 }
@@ -54,7 +55,7 @@ export interface StoryboardCreationRunOptions {
   readonly aspectRatio?: string;
   readonly granularity?: string;
   readonly maxShots?: number;
-  readonly language?: "zh" | "en";
+  readonly language?: "zh" | "en" | "ko";
   readonly projectId?: string;
   readonly onProgress?: (message: string) => void;
 }
@@ -74,7 +75,7 @@ export interface InteractiveFilmCreationRunOptions {
   readonly episodeDuration?: string;
   readonly budget?: string;
   readonly referenceMode?: string;
-  readonly language?: "zh" | "en";
+  readonly language?: "zh" | "en" | "ko";
   readonly projectId?: string;
   readonly onProgress?: (message: string) => void;
 }
@@ -175,9 +176,11 @@ export async function runScriptCreation(
   options.onProgress?.("Writing script draft...");
   const agent = new ScriptCreationAgent(options.runtime);
   const script = await agent.writeScript(input);
+  const koreanReferences = options.language === "ko" ? extractKoreanScriptReferences(options.title, script) : undefined;
   const artifacts = [
     textArtifact(join(baseDir, "script-spec.md"), spec),
     textArtifact(join(baseDir, "script.md"), script),
+    ...(koreanReferences ? [textArtifact(join(baseDir, "script-references.md"), koreanReferences)] : []),
   ];
   assertNonEmptyArtifacts(artifacts);
   await syncWorkSourceArtifacts({ projectRoot: options.projectRoot, workId: projectId, accept: true, writes: artifacts });
@@ -396,7 +399,7 @@ function renderImagePrompts(prompts: ReadonlyArray<string>): string {
   return prompts.map((prompt, index) => `${index + 1}. ${prompt}`).join("\n");
 }
 
-async function resolveSourceText(
+export async function resolveSourceText(
   projectRoot: string,
   sourceText: string | undefined,
   sourcePath: string | undefined,
@@ -417,7 +420,7 @@ async function resolveSourceText(
   }
 }
 
-function textArtifact(relativePath: string, content: string): {
+export function textArtifact(relativePath: string, content: string): {
   readonly relativePath: string;
   readonly content: string;
 } {
@@ -443,7 +446,7 @@ async function ensureUnwrittenWork(
   projectId: string,
   title: string,
   profileId: "script" | "storyboard" | "interactive-film",
-  language: "zh" | "en",
+  language: "zh" | "en" | "ko",
 ): Promise<void> {
   try {
     const existing = await loadWorkManifest(projectRoot, projectId);
@@ -495,7 +498,7 @@ async function persistCandidateArtifacts(
 }
 
 /** Preserve the actual supplied input before generation, independently of draft acceptance. */
-async function persistProductionInputs(
+export async function persistProductionInputs(
   projectRoot: string,
   workId: string,
   specifications: ReadonlyArray<{ readonly relativePath: string; readonly content: string }>,
@@ -513,12 +516,12 @@ async function ensureProjectDir(projectRoot: string, relativePath: string): Prom
   await mkdir(safeChildPath(projectRoot, relativePath), { recursive: true });
 }
 
-function mergeRequirements(
+export function mergeRequirements(
   instruction: string,
   requirements: string | undefined,
-  language: "zh" | "en" = "zh",
+  language: "zh" | "en" | "ko" = "zh",
 ): string {
-  const extraLabel = language === "en" ? "Additional requirements:" : "补充要求：";
+  const extraLabel = language === "ko" ? "추가 요구 사항:" : language !== "zh" ? "Additional requirements:" : "补充要求：";
   return [
     instruction.trim(),
     requirements?.trim() ? `\n${extraLabel}\n${requirements.trim()}` : "",
@@ -526,11 +529,11 @@ function mergeRequirements(
 }
 
 // Project-relative path for results and manifests: always "/" separators.
-function relPath(...segments: string[]): string {
+export function relPath(...segments: string[]): string {
   return toPosixPath(join(...segments));
 }
 
-function safeSegment(value: string): string {
+export function safeSegment(value: string): string {
   const text = value.trim();
   if (!text || text === "." || text === ".." || text.includes("/") || text.includes("\\") || text.includes("\0")) {
     throw new Error(`Invalid project id: ${JSON.stringify(value)}`);
@@ -538,7 +541,7 @@ function safeSegment(value: string): string {
   return text.slice(0, 80);
 }
 
-function slugify(value: string): string {
+export function slugify(value: string): string {
   const text = value
     .trim()
     .toLowerCase()

@@ -37,7 +37,7 @@ export class ReviserAgent extends BaseAgent {
     mode: ReviseMode = DEFAULT_REVISE_MODE,
     _genre?: string,
     options?: {
-      readonly language: "zh" | "en";
+      readonly language: "zh" | "en" | "ko";
       readonly chapterTitle?:string;
       readonly targetText?:string;
       readonly contextPackage: ContextPackage;
@@ -49,7 +49,7 @@ export class ReviserAgent extends BaseAgent {
     if (!options) throw new Error("Reviser requires governed context and language.");
     const body=(content:string)=>options.chapterTitle===undefined?content:chapterDocumentBody(content,chapterNumber,options.chapterTitle,options.language);
     chapterContent=body(chapterContent);
-    const isEnglish = options.language === "en";
+    const isEnglish = options.language !== "zh";
     const observationList = observations.length > 0
       ? observations.map((issue) => [
           `- ${issue.code}: ${issue.summary}`,
@@ -61,7 +61,7 @@ export class ReviserAgent extends BaseAgent {
     const context = renderNarrativeSelectedContext(options.contextPackage.selectedContext, options.language);
     const lengthBlock = options.lengthSpec
       ? (isEnglish
-          ? `\n## Length contract\n${JSON.stringify({...options.lengthSpec,currentCount:countChapterLength(chapterContent,options.lengthSpec.countingMode),unit:"words"})}`
+          ? `\n## Length contract\n${JSON.stringify({...options.lengthSpec,currentCount:countChapterLength(chapterContent,options.lengthSpec.countingMode),unit:options.language === "ko" ? "ko_chars: NFC characters excluding whitespace, punctuation included, title excluded" : "words"})}`
           : `\n## 篇幅要求\n${JSON.stringify({...options.lengthSpec,currentCount:countChapterLength(chapterContent,options.lengthSpec.countingMode),unit:"正文非空白字符，含标点，不含标题"})}`)
       : "";
     const systemPrompt = buildRevisionProtocol(mode, options.language);
@@ -164,7 +164,7 @@ export class ReviserAgent extends BaseAgent {
   }
 }
 
-function buildRevisionProtocol(mode: ReviseMode, language: "zh" | "en"): string {
+function buildRevisionProtocol(mode: ReviseMode, language: "zh" | "en" | "ko"): string {
   const modes: Record<ReviseMode, { readonly en: string; readonly zh: string }> = {
     polish: { en: "Edit wording only; keep facts, events, characters, and causality.", zh: "只改文字表面，保持事实、事件、人物和因果。" },
     rewrite: { en: "Rewrite the affected passages; rewrite the whole chapter only when the instruction spans it.", zh: "重写受影响段落；只有要求跨越整章时才重写整章。" },
@@ -172,7 +172,7 @@ function buildRevisionProtocol(mode: ReviseMode, language: "zh" | "en"): string 
     "anti-detect": { en: "Change wording only while preserving story facts and causality.", zh: "只调整文字表面，保持剧情事实和因果。" },
     "spot-fix": { en: "Select only the source line ranges needed for the local request, then replace those ranges while preserving surrounding text.", zh: "先选择局部请求涉及的原文行范围，再替换这些范围，保留范围外正文。" },
   };
-  return language === "en"
+  return language !== "zh"
     ? `Revise with the activated professional Skill and governed context. ${modes[mode].en} Submit the result through the required tool.`
     : `按已激活的专业 Skill 和 governed context 修订。${modes[mode].zh}通过指定结果工具提交。`;
 }

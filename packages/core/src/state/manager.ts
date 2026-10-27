@@ -1,4 +1,5 @@
 import { ownsWorkMutation } from "../utils/work-mutation-scope.js";
+import { roleTierDirectory } from "../utils/korean-language.js";
 import { readFile, writeFile, mkdir, readdir, rm, stat, unlink, open } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 import { join, resolve } from "node:path";
@@ -56,13 +57,15 @@ export class BookWriteLockError extends Error {
 export class StateManager {
   constructor(private readonly projectRoot: string) {}
 
-  private static defaultAuthorIntent(language: "zh" | "en"): string {
+  private static defaultAuthorIntent(language: "zh" | "en" | "ko"): string {
+    if (language === "ko") return "# 작가 의도\n\n## 독자 경험과 핵심 약속\n- 상태: 미정\n- 목적: 이 작품이 독자에게 줄 경험을 적는다.\n- 맥락: 대상 독자·장르·현재 선택의 이유를 적는다.\n- 기준: 장면과 결말에서 확인할 약속을 적는다.\n- 경계: 금지·예외·혼합 장르·수위의 허용 범위를 적는다.\n\n## 항목별 선택\n주제·정서·배경·인물·시점·관계/로맨스 비중·성장 장치·종착 목표 각각에 위 네 요소를 적용한다. 확정/제안/미정을 구별하며 비어 있는 선택은 임의 확정하지 않는다.\n";
     return language === "zh"
       ? "# 作者意图\n\n（在这里描述这本书的长期创作方向。）\n"
       : "# Author Intent\n\n(Describe the long-horizon vision for this book here.)\n";
   }
 
-  private static defaultCurrentFocus(language: "zh" | "en"): string {
+  private static defaultCurrentFocus(language: "zh" | "en" | "ko"): string {
+    if (language === "ko") return "# 현재 작업 초점\n\n## 이번 작업\n- 상태: 미정\n- 목적: 이번에 바꿀 사건·정보·관계 또는 결정은 무엇인가?\n- 맥락: 어느 회차·인물·기존 정사를 근거로 하는가?\n- 기준: 무엇을 확인하면 이번 작업이 완료인가?\n- 경계: 건드리지 않을 정사·금지·중단 조건은 무엇인가?\n\n이 문서는 이번 작업의 지침이며 전 작품의 영구 규칙이나 이미 발생한 사실이 아니다.\n";
     return language === "zh"
       ? "# 当前聚焦\n\n## 当前重点\n\n（描述接下来 1-3 章最需要优先推进的内容。）\n"
       : "# Current Focus\n\n## Active Focus\n\n(Describe what the next 1-3 chapters should prioritize.)\n";
@@ -75,14 +78,14 @@ export class StateManager {
 
   async ensureControlDocumentsAt(
     bookDir: string,
-    language: "zh" | "en",
+    language: "zh" | "en" | "ko",
     authorIntent?: string,
   ): Promise<void> {
     const storyDir = join(bookDir, "story");
     const runtimeDir = join(storyDir, "runtime");
     const outlineDir = join(storyDir, "outline");
-    const rolesMajorDir = join(storyDir, "roles", "主要角色");
-    const rolesMinorDir = join(storyDir, "roles", "次要角色");
+    const rolesMajorDir = join(storyDir, "roles", roleTierDirectory(language, "major"));
+    const rolesMinorDir = join(storyDir, "roles", roleTierDirectory(language, "minor"));
 
     await mkdir(storyDir, { recursive: true });
     await mkdir(runtimeDir, { recursive: true });
@@ -121,7 +124,7 @@ export class StateManager {
     return { authorIntent, currentFocus, runtimeDir };
   }
 
-  private async resolveControlDocumentLanguage(bookId: string): Promise<"zh" | "en"> {
+  private async resolveControlDocumentLanguage(bookId: string): Promise<"zh" | "en" | "ko"> {
     const raw = await readFile(join(this.bookDir(bookId), "book.json"), "utf-8");
     return BookConfigSchema.parse(JSON.parse(raw)).language;
   }
