@@ -447,3 +447,9 @@ names, scene order, or signature combinations" 원칙을 그대로 지킨다). �
 
   - Codex는 Codex 클라우드(같은 작업 안에서 작업 공간 유지)만 지원한다. ChatGPT '워크 모드'는 지원하지 않는다(RUNTIME "Codex 클라우드").
   - 다음은 8단계 사용자 실사용 시험이다(사용자 진행). 실제 작품을 대화형 1~2화 쓰고 일괄 "두 화 더 써줘"를 한다. 실제 Drive 업로드는 이번에 처음 확인하고, 다른 세션에서 이어 쓰기를 1회 한다.
+- 2026-10-27 (`claude/eeum-n0rsol`): **9단계 `(stage 9)` — 라이트 무협 문체 스킬 편입(프리셋 B).** 근거는 `verification/stage-9.md`.
+  - 0번 확인: writer 정산도 같은 이름으로 스킬을 받는다(`## Settlement baseline` 표식으로 정산에는 문체 스킬을 빼게 함). 회차 감사 프롬프트에는 `book_rules.md`·`style_guide.md`가 들어가지 않는다(고치지 않음).
+  - `skills-ko/inkos-ko-light-murim/`(분석 파일 1~4 정리, 95.6KB → 94.3KB), `skills/korean-genre-skills.ts`, `base.ts` 2줄. ko ∧ light-martial ∧ `story/korean_style_preset`=`light-murim-comic`일 때만, 작업자별 정해진 절. writer 상한 60KB(사용자 결정).
+  - 충돌 문장 조건화(long-writing·korean-prose), deslop 한 줄, 인터뷰 문체 질문과 `interview --work`의 프리셋 파일 쓰기.
+  - 브리지: 시험 작품 test-9 1화(전투, C1 → C7)·2화(일상). 감사가 일부러 넣은 분노 장면 개그 한 줄을 issue로 올리고, 의도된 장치(군중 일제 반응 + 개별화, 발소리 1·2·3, 피해자 합창)는 올리지 않음. 프롬프트 크기 표.
+  - 시험(프록시 변수 제거, shim 경유): core 765 / studio 307 / cli 101 = 1,173 통과, 브리지 38/38, 프로젝트 기록 19/19, Drive 51/51, novel-brief 31/31, 설치 스크립트 58/58.
